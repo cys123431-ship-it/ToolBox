@@ -156,7 +156,7 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_parts_are_rejected() {
+    fn zip_writer_refuses_duplicate_filenames() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("duplicate.docx");
         let mut writer = zip::ZipWriter::new(File::create(&path).unwrap());
@@ -166,9 +166,31 @@ mod tests {
                 .unwrap();
             writer.write_all(b"<w:document/>").unwrap();
         }
-        writer.finish().unwrap();
-        assert!(validate_docx_package(&path)
-            .unwrap_err()
-            .contains("중복된 ZIP 항목"));
+        writer
+            .start_file("word/document.xml", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(b"<w:document/>").unwrap();
+        // ZIP 2.x prevents duplicate names during fixture construction.
+        assert!(writer
+            .start_file("word/document.xml", SimpleFileOptions::default())
+            .is_err());
     }
+    #[test]
+    fn corrupted_entry_crc_is_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("corrupt-crc.docx");
+        write_minimal_docx(&path);
+        validate_docx_package(&path).unwrap();
+
+        let mut bytes = std::fs::read(&path).unwrap();
+        let marker = "한글 테스트".as_bytes();
+        let offset = bytes
+            .windows(marker.len())
+            .position(|slice| slice == marker)
+            .expect("expected test text in stored XML");
+        bytes[offset] ^= 1;
+        std::fs::write(&path, bytes).unwrap();
+        assert!(validate_docx_package(&path).is_err());
+    }
+
 }
