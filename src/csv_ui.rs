@@ -358,10 +358,15 @@ impl CsvEditorUi {
         ui.separator();
         if let Some((row, col)) = self.selected {
             ui.label(format!("선택 셀: {}행 {}열", row + 1, col + 1));
-            ui.add_sized(
-                [ui.available_width(), 70.0],
-                egui::TextEdit::multiline(&mut self.draft).hint_text("선택한 셀의 값"),
-            );
+            if ui
+                .add_sized(
+                    [ui.available_width(), 70.0],
+                    egui::TextEdit::multiline(&mut self.draft).hint_text("선택한 셀의 값"),
+                )
+                .changed()
+            {
+                changed = true;
+            }
             if self.has_pending_draft() {
                 ui.colored_label(
                     egui::Color32::from_rgb(175, 100, 20),
