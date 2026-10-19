@@ -71,7 +71,8 @@ impl WordCraftEmbed {
     pub fn export_as(&mut self) -> Result<Option<PathBuf>, String> {
         let Some(destination) = rfd::FileDialog::new()
             .add_filter("Word 문서", &["docx"])
-            .save_file() else {
+            .save_file()
+        else {
             return Ok(None);
         };
         if destination == self.original {
@@ -92,7 +93,11 @@ impl WordCraftEmbed {
 }
 
 fn export_new_file(source: &Path, destination: &Path) -> Result<(), String> {
-    if !destination.extension().and_then(|s| s.to_str()).is_some_and(|s| s.eq_ignore_ascii_case("docx")) {
+    if !destination
+        .extension()
+        .and_then(|s| s.to_str())
+        .is_some_and(|s| s.eq_ignore_ascii_case("docx"))
+    {
         return Err("DOCX 확장자로 저장해야 합니다.".into());
     }
     let dir = destination.parent().ok_or("저장할 폴더가 없습니다.")?;
@@ -100,7 +105,9 @@ fn export_new_file(source: &Path, destination: &Path) -> Result<(), String> {
     let mut input = fs::File::open(source).map_err(|e| e.to_string())?;
     std::io::copy(&mut input, &mut staged).map_err(|e| e.to_string())?;
     staged.as_file_mut().sync_all().map_err(|e| e.to_string())?;
-    staged.persist_noclobber(destination).map_err(|e| format!("기존 파일은 덮어쓰지 않습니다: {}", e.error))?;
+    staged
+        .persist_noclobber(destination)
+        .map_err(|e| format!("기존 파일은 덮어쓰지 않습니다: {}", e.error))?;
     Ok(())
 }
 
