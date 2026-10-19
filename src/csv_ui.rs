@@ -56,6 +56,52 @@ impl CsvEditorUi {
             .is_some_and(|(r, c)| self.draft != self.workspace.cell(r, c))
     }
 
+    /// Recovery is opt-in and changes only the in-memory workspace.
+    fn restore_pending(&mut self) -> Result<(), String> {
+        let snapshot = self.pending_recovery.as_ref().ok_or("복구할 작업이 없습니다.")?;
+        let conflict = snapshot.source_sha256 != self.workspace.source_sha256();
+        self.workspace.restore_rows(snapshot.rows.clone())?;
+        self.selected = snapshot.selected;
+        self.draft = snapshot.draft.clone();
+        self.recovery_conflict = conflict;
+        self.pending_recovery = None;
+        self.notice = if conflict {
+            "복구 완료. 원본이 외부에서 변경되어 '현재 파일 저장'은 차단됩니다. '다른 이름으로 저장'을 사용하세요.".into()
+        } else {
+            "저장하지 않았던 작업을 메모리에 복구했습니다. 원본은 변경되지 않았습니다.".into()
+        };
+        Ok(())
+    }
+
+    fn discard_pending(&mut self) -> Result<(), String> {
+        csv_recovery::discard(&self.workspace.path)?;
+        self.pending_recovery = None;
+        self.notice = "이전 복구 데이터를 삭제했습니다. 원본은 변경되지 않았습니다.".into();
+        Ok(())
+    }
+
+    pub fn discard_changes(&mut self) -> Result<(), String> {
+        csv_recovery::discard(&self.workspace.path)
+    }
+
+    fn persist_recovery(&mut self) {
+        let result = if self.is_dirty() {
+            let snapshot = RecoverySnapshot::new(
+                &self.workspace.path,
+                self.workspace.source_sha256(),
+                self.workspace.rows.clone(),
+                self.selected,
+                self.draft.clone(),
+            );
+            csv_recovery::save(&snapshot)
+        } else {
+            csv_recovery::discard(&self.workspace.path)
+        };
+        if let Err(error) = result {
+            self.notice = format!("자동 복구 데이터 저장 실패: {error}");
+        }
+    }
+
     fn choose(&mut self, row: usize, column: usize) {
         if self.has_pending_draft() {
             self.notice = "현재 셀의 내용을 적용하거나 취소한 뒤 이동하세요.".into();
