@@ -9,11 +9,7 @@ use zip::ZipArchive;
 const MAX_PARTS: usize = 4_096;
 const MAX_PART_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 128 * 1024 * 1024;
-const REQUIRED_PARTS: [&str; 3] = [
-    "[Content_Types].xml",
-    "_rels/.rels",
-    "word/document.xml",
-];
+const REQUIRED_PARTS: [&str; 3] = ["[Content_Types].xml", "_rels/.rels", "word/document.xml"];
 
 /// Verify that a candidate DOCX is a readable, bounded ZIP package containing
 /// its required main parts. Every part is read to EOF to check ZIP CRC values.
