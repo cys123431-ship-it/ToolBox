@@ -189,7 +189,10 @@ impl CsvEditorUi {
         ui.horizontal_wrapped(|ui| {
             if ui.button("셀 적용").clicked() {
                 self.notice = match self.apply_draft() {
-                    Ok(()) => "셀 내용을 적용했습니다.".into(),
+                    Ok(()) => {
+                        changed = true;
+                        "셀 내용을 적용했습니다.".into()
+                    }
                     Err(e) => e,
                 };
             }
@@ -204,7 +207,9 @@ impl CsvEditorUi {
                 )
                 .clicked()
             {
-                self.workspace.undo();
+                if self.workspace.undo() {
+                    changed = true;
+                }
                 self.refresh_selection();
             }
             if ui
@@ -214,7 +219,9 @@ impl CsvEditorUi {
                 )
                 .clicked()
             {
-                self.workspace.redo();
+                if self.workspace.redo() {
+                    changed = true;
+                }
                 self.refresh_selection();
             }
             if ui
@@ -222,7 +229,10 @@ impl CsvEditorUi {
                 .clicked()
             {
                 self.notice = match self.workspace.add_row() {
-                    Ok(()) => "행을 추가했습니다.".into(),
+                    Ok(()) => {
+                        changed = true;
+                        "행을 추가했습니다.".into()
+                    },
                     Err(e) => e,
                 };
                 self.refresh_selection();
@@ -232,7 +242,10 @@ impl CsvEditorUi {
                 .clicked()
             {
                 self.notice = match self.workspace.add_column() {
-                    Ok(()) => "열을 추가했습니다.".into(),
+                    Ok(()) => {
+                        changed = true;
+                        "열을 추가했습니다.".into()
+                    },
                     Err(e) => e,
                 };
                 self.refresh_selection();
@@ -246,7 +259,10 @@ impl CsvEditorUi {
             {
                 if let Some((row, _)) = self.selected {
                     self.notice = match self.workspace.delete_row(row) {
-                        Ok(()) => "행을 삭제했습니다. 실행 취소할 수 있습니다.".into(),
+                        Ok(()) => {
+                            changed = true;
+                            "행을 삭제했습니다. 실행 취소할 수 있습니다.".into()
+                        },
                         Err(e) => e,
                     };
                     self.refresh_selection();
