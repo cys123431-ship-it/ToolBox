@@ -71,3 +71,9 @@
 - eframe 0.34 이후 제거된 App::update를 App::ui로 바꾸고, 패널을 egui::Panel::top/left/bottom의 부모 Ui 기반 레이아웃으로 이관한다.
 - 이 변경만으로 WordCraft 등이 내장되는 것은 아니다. 별도의 UI 어댑터와 파일 왕복 테스트가 필요하다.
 - Windows Actions에서 fmt, clippy, 단위 테스트, Release 빌드 검증을 실시하고 실제 Windows 11 GUI 검증은 별도로 수행한다.
+
+## 2026-10-20 WordCraft UI 통합 실험
+
+- 선택 기능 `embedded-wordcraft`로 WordCraft의 `WordApp::ui`를 ToolBox 중앙 UI에 호출하는 첫 PoC.
+- 원본 보호를 위해 임시 사본만 편집/저장. 원본 반영 및 DOCX 왕복 검증은 아직 미구현.
+- Windows 기능 빌드와 실제 화면 검증이 완료되기 전까지 단일 창 DOCX 편집 완성으로 표시하지 않음.

@@ -9,6 +9,8 @@ mod csv_workspace_tests;
 mod engines;
 mod preferences;
 mod ui;
+#[cfg(feature = "embedded-wordcraft")]
+mod wordcraft_embed;
 
 use eframe::egui;
 

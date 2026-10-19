@@ -17,3 +17,22 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 tempfile = "3"
+
+[features]
+default = []
+embedded-wordcraft = ["dep:wordcraft-doc", "dep:wordcraft-engine", "dep:wordcraft-ui-egui"]
+
+[dependencies.wordcraft-doc]
+git = "https://github.com/storytold/wordcraft"
+rev = "e6c5a701ddff5be16e266028168c70658aae39d9"
+optional = true
+
+[dependencies.wordcraft-engine]
+git = "https://github.com/storytold/wordcraft"
+rev = "e6c5a701ddff5be16e266028168c70658aae39d9"
+optional = true
+
+[dependencies.wordcraft-ui-egui]
+git = "https://github.com/storytold/wordcraft"
+rev = "e6c5a701ddff5be16e266028168c70658aae39d9"
+optional = true

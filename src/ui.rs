@@ -3,10 +3,14 @@ use crate::engines::{self, Engine};
 use crate::preferences::Preferences;
 use eframe::egui;
 use std::path::PathBuf;
+#[cfg(feature = "embedded-wordcraft")]
+use crate::wordcraft_embed::WordCraftEmbed;
 
 pub struct ToolBoxApp {
     preferences: Preferences,
     csv_editor: Option<CsvEditorUi>,
+    #[cfg(feature = "embedded-wordcraft")]
+    wordcraft: Option<WordCraftEmbed>,
     active: Engine,
     selected: Option<PathBuf>,
     notice: String,
@@ -18,6 +22,8 @@ impl ToolBoxApp {
         Self {
             preferences: Preferences::load(),
             csv_editor: None,
+            #[cfg(feature = "embedded-wordcraft")]
+            wordcraft: None,
             active: Engine::Document,
             selected: None,
             notice: "현재 버전은 편집기 연결 실험용입니다. 통합 편집기는 개발 중입니다.".into(),
@@ -26,6 +32,17 @@ impl ToolBoxApp {
     }
 
     fn select(&mut self, path: PathBuf) {
+        #[cfg(feature = "embedded-wordcraft")]
+        if let Some(editor) = self.wordcraft.as_ref() {
+            if editor.original() == path {
+                self.active = Engine::Document;
+                return;
+            }
+            if editor.dirty() {
+                self.notice = "DOCX 임시 사본에 저장하지 않은 변경이 있습니다.".into();
+                return;
+            }
+        }
         if let Some(editor) = self.csv_editor.as_ref() {
             if editor.workspace.path == path {
                 self.active = Engine::Spreadsheet;
@@ -53,6 +70,20 @@ impl ToolBoxApp {
                     }
                 } else {
                     self.csv_editor = None;
+                }
+                #[cfg(feature = "embedded-wordcraft")]
+                {
+                    if path.extension().and_then(|s| s.to_str()).is_some_and(|s| s.eq_ignore_ascii_case("docx")) {
+                        match WordCraftEmbed::open(&path) {
+                            Ok(editor) => self.wordcraft = Some(editor),
+                            Err(e) => {
+                                self.notice = format!("내장 DOCX 열기 실패: {e}");
+                                return;
+                            }
+                        }
+                    } else {
+                        self.wordcraft = None;
+                    }
                 }
                 self.active = engine;
                 self.selected = Some(path.clone());
@@ -97,6 +128,33 @@ impl ToolBoxApp {
     }
 
     fn module_panel(&mut self, ui: &mut egui::Ui) {
+        #[cfg(feature = "embedded-wordcraft")]
+        if self.active == Engine::Document && self.wordcraft.is_some() {
+            let mut close = false;
+            if let Some(editor) = self.wordcraft.as_mut() {
+                ui.heading("DOCX · WordCraft 내장 편집 실험");
+                ui.label("원본을 임시 사본으로 복사해 편집합니다. 원본은 자동 변경되지 않습니다.");
+                ui.horizontal(|ui| {
+                    if ui.button("임시 사본 저장").clicked() {
+                        self.notice = match editor.save_working_copy() {
+                            Ok(()) => "임시 사본을 저장했습니다. 원본은 변경되지 않았습니다.".into(),
+                            Err(e) => format!("임시 사본 저장 실패: {e}"),
+                        };
+                    }
+                    if ui.button("임시 편집 종료 (사본 폐기)").clicked() {
+                        close = true;
+                    }
+                });
+                ui.separator();
+                editor.show(ui);
+            }
+            if close {
+                self.wordcraft = None;
+                self.selected = None;
+                self.notice = "DOCX 임시 사본을 폐기하고 편집기를 닫았습니다.".into();
+            }
+            return;
+        }
         ui.heading(self.active.title());
         ui.label(self.active.description());
         ui.add_space(12.0);
@@ -217,6 +275,14 @@ impl ToolBoxApp {
 }
 
 impl eframe::App for ToolBoxApp {
+    #[cfg(feature = "embedded-wordcraft")]
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {
+        if self.active == Engine::Document {
+            if let Some(editor) = self.wordcraft.as_mut() {
+                editor.raw_input_hook(raw);
+            }
+        }
+    }
     fn ui(&mut self, root_ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         if let Some(path) = root_ui.input(|input| {
             input.raw.dropped_files.iter().find_map(|file| {
