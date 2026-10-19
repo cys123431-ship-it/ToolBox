@@ -117,10 +117,22 @@ mod tests {
 
     #[test]
     fn classifies_file_extensions_case_insensitively() {
-        assert_eq!(Engine::from_path(Path::new("draft.DOCX")), Some(Engine::Document));
-        assert_eq!(Engine::from_path(Path::new("grades.xlsx")), Some(Engine::Spreadsheet));
-        assert_eq!(Engine::from_path(Path::new("talk.PPTX")), Some(Engine::Slides));
-        assert_eq!(Engine::from_path(Path::new("form.HWPX")), Some(Engine::Hangul));
+        assert_eq!(
+            Engine::from_path(Path::new("draft.DOCX")),
+            Some(Engine::Document)
+        );
+        assert_eq!(
+            Engine::from_path(Path::new("grades.xlsx")),
+            Some(Engine::Spreadsheet)
+        );
+        assert_eq!(
+            Engine::from_path(Path::new("talk.PPTX")),
+            Some(Engine::Slides)
+        );
+        assert_eq!(
+            Engine::from_path(Path::new("form.HWPX")),
+            Some(Engine::Hangul)
+        );
         assert_eq!(Engine::from_path(Path::new("notes.pdf")), Some(Engine::Pdf));
         assert_eq!(Engine::from_path(Path::new("file.exe")), None);
     }

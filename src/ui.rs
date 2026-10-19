@@ -48,7 +48,10 @@ impl ToolBoxApp {
             self.notice = if engine == Engine::Hangul {
                 "HWP/HWPX 데스크톱 편집 브리지는 아직 구현되지 않았습니다.".into()
             } else {
-                format!("{} 실행 파일이 없습니다. 설정에서 경로를 지정하세요.", engine.key())
+                format!(
+                    "{} 실행 파일이 없습니다. 설정에서 경로를 지정하세요.",
+                    engine.key()
+                )
             };
             return;
         };
@@ -68,10 +71,8 @@ impl ToolBoxApp {
         ui.heading(self.active.title());
         ui.label(self.active.description());
         ui.add_space(12.0);
-        let binary = engines::resolve_binary(
-            self.active,
-            self.preferences.binary(self.active.key()),
-        );
+        let binary =
+            engines::resolve_binary(self.active, self.preferences.binary(self.active.key()));
         if self.active == Engine::Hangul {
             ui.colored_label(
                 egui::Color32::from_rgb(195, 120, 35),
@@ -86,17 +87,22 @@ impl ToolBoxApp {
 
         ui.add_space(10.0);
         if ui.button("파일 선택…").clicked() {
-            if let Some(path) = rfd::FileDialog::new().set_title("ToolBox - 파일 선택").pick_file() {
+            if let Some(path) = rfd::FileDialog::new()
+                .set_title("ToolBox - 파일 선택")
+                .pick_file()
+            {
                 self.select(path);
             }
         }
         if let Some(path) = self.selected.clone() {
             ui.label(format!("선택한 파일: {}", path.display()));
             if Engine::from_path(&path) == Some(self.active)
-                && ui.add_enabled(
-                    self.active.can_launch_document() && binary.is_some(),
-                    egui::Button::new("선택 파일을 편집기로 열기"),
-                ).clicked()
+                && ui
+                    .add_enabled(
+                        self.active.can_launch_document() && binary.is_some(),
+                        egui::Button::new("선택 파일을 편집기로 열기"),
+                    )
+                    .clicked()
             {
                 self.launch(path);
             }
@@ -115,7 +121,9 @@ impl ToolBoxApp {
             if !self.active.can_launch_document() {
                 ui.label("이 모듈은 아직 경로 설정 대상이 아닙니다.");
             } else {
-                let value = self.preferences.executables
+                let value = self
+                    .preferences
+                    .executables
                     .entry(self.active.key().to_string())
                     .or_default();
                 ui.label("실행 파일 전체 경로 (미지정 시 PATH에서 탐색)");
@@ -143,9 +151,9 @@ impl ToolBoxApp {
 
 impl eframe::App for ToolBoxApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Some(path) = ctx.input(|input| {
-            input.raw.dropped_files.iter().find_map(|f| f.path.clone())
-        }) {
+        if let Some(path) =
+            ctx.input(|input| input.raw.dropped_files.iter().find_map(|f| f.path.clone()))
+        {
             self.select(path);
         }
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
@@ -154,7 +162,14 @@ impl eframe::App for ToolBoxApp {
                 ui.separator();
                 ui.label("Desktop Alpha · 로컬 우선");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button(if self.show_settings { "설정 닫기" } else { "설정" }).clicked() {
+                    if ui
+                        .button(if self.show_settings {
+                            "설정 닫기"
+                        } else {
+                            "설정"
+                        })
+                        .clicked()
+                    {
                         self.show_settings = !self.show_settings;
                     }
                 });
@@ -167,22 +182,33 @@ impl eframe::App for ToolBoxApp {
                 ui.heading("작업 공간");
                 ui.separator();
                 for engine in Engine::ALL {
-                    if ui.selectable_label(self.active == engine, engine.title()).clicked() {
+                    if ui
+                        .selectable_label(self.active == engine, engine.title())
+                        .clicked()
+                    {
                         self.active = engine;
                     }
                 }
                 ui.add_space(22.0);
                 ui.heading("최근 파일");
                 let recent = self.preferences.recent.clone();
-                egui::ScrollArea::vertical().max_height(330.0).show(ui, |ui| {
-                    for path in recent {
-                        let name = path.file_name().map(|s| s.to_string_lossy().into_owned())
-                            .unwrap_or_else(|| path.display().to_string());
-                        if ui.button(name).on_hover_text(path.display().to_string()).clicked() {
-                            self.select(path);
+                egui::ScrollArea::vertical()
+                    .max_height(330.0)
+                    .show(ui, |ui| {
+                        for path in recent {
+                            let name = path
+                                .file_name()
+                                .map(|s| s.to_string_lossy().into_owned())
+                                .unwrap_or_else(|| path.display().to_string());
+                            if ui
+                                .button(name)
+                                .on_hover_text(path.display().to_string())
+                                .clicked()
+                            {
+                                self.select(path);
+                            }
                         }
-                    }
-                });
+                    });
             });
         egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
             ui.label(&self.notice);

@@ -68,7 +68,9 @@ mod tests {
     #[test]
     fn settings_serialize() {
         let mut prefs = Preferences::default();
-        prefs.executables.insert("wordcraft".into(), "C:\\Tools\\wordcraft.exe".into());
+        prefs
+            .executables
+            .insert("wordcraft".into(), "C:\\Tools\\wordcraft.exe".into());
         let serialized = serde_json::to_string(&prefs).unwrap();
         let loaded: Preferences = serde_json::from_str(&serialized).unwrap();
         assert_eq!(loaded.binary("wordcraft"), Some("C:\\Tools\\wordcraft.exe"));
