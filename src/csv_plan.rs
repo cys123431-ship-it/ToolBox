@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn invalid_expected_cell_or_bounds_are_rejected_atomically() {
-        let (_dir, mut workspace) = fixture();
+        let (_dir, workspace) = fixture();
         let json = plan_json(
             &workspace,
             r#"[{"row":1,"col":1,"expected":"80","replacement":"85"},{"row":999,"col":0,"expected":"","replacement":"x"}]"#,

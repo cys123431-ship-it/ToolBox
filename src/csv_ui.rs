@@ -353,11 +353,17 @@ impl CsvEditorUi {
                 self.workspace.source_sha256()
             ));
             ui.label("0부터 시작하는 row/col과 expected/replacement를 입력하세요.");
-            ui.add(
-                egui::TextEdit::multiline(&mut self.plan_input)
-                    .hint_text("JSON 변경 계획을 붙여넣으세요")
-                    .desired_rows(5),
-            );
+            if ui
+                .add(
+                    egui::TextEdit::multiline(&mut self.plan_input)
+                        .hint_text("JSON 변경 계획을 붙여넣으세요")
+                        .desired_rows(5),
+                )
+                .changed()
+            {
+                self.plan_preview = None;
+                self.plan_notice = "계획 내용이 변경됐습니다. 다시 검증하세요.".into();
+            }
             ui.horizontal(|ui| {
                 if ui
                     .add_enabled(
