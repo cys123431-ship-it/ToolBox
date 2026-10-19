@@ -109,3 +109,31 @@ fn editing_earlier_column_preserves_later_columns_and_ragged_rows() {
     assert_eq!(reloaded.cell(0, 2), "three");
     assert_eq!(reloaded.rows[1].len(), 1);
 }
+
+#[test]
+fn restore_rows_keeps_source_untouched_until_save() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("recovery.csv");
+    fs::write(&path, "original,second\n").unwrap();
+    let mut sheet = CsvWorkspace::open(&path).unwrap();
+    sheet.restore_rows(vec![vec!["restored".into(), "second".into()]])
+        .unwrap();
+    assert!(sheet.is_dirty());
+    assert_eq!(fs::read_to_string(&path).unwrap(), "original,second\n");
+    assert!(sheet.undo());
+    assert!(!sheet.is_dirty());
+    assert_eq!(sheet.cell(0, 0), "original");
+}
+
+#[test]
+fn source_fingerprint_changes_only_after_successful_save() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("hash.csv");
+    fs::write(&path, "first\n").unwrap();
+    let mut sheet = CsvWorkspace::open(&path).unwrap();
+    let before = sheet.source_sha256();
+    sheet.set_cell(0, 0, "second".into()).unwrap();
+    assert_eq!(sheet.source_sha256(), before);
+    sheet.save_current().unwrap();
+    assert_ne!(sheet.source_sha256(), before);
+}
