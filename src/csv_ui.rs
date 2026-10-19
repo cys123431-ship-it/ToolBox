@@ -203,6 +203,7 @@ impl CsvEditorUi {
             }
             if ui.button("셀 입력 취소").clicked() {
                 self.refresh_selection();
+                changed = true;
                 self.notice = "미적용 셀 입력을 취소했습니다.".into();
             }
             if ui
@@ -358,6 +359,7 @@ impl CsvEditorUi {
             });
         if let Some((row, col)) = chosen {
             self.choose(row, col);
+            changed = true;
         }
 
         ui.separator();
