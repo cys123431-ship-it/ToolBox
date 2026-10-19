@@ -1,4 +1,5 @@
 //! Native CSV/TSV grid and cell editor. No external editor process is required.
+use crate::csv_recovery::{self, RecoverySnapshot};
 use crate::csv_workspace::CsvWorkspace;
 use eframe::egui;
 use std::path::{Path, PathBuf};
@@ -8,6 +9,8 @@ pub struct CsvEditorUi {
     selected: Option<(usize, usize)>,
     draft: String,
     notice: String,
+    pending_recovery: Option<RecoverySnapshot>,
+    recovery_conflict: bool,
 }
 
 impl CsvEditorUi {
