@@ -218,9 +218,12 @@ impl ToolBoxApp {
 
 impl eframe::App for ToolBoxApp {
     fn ui(&mut self, root_ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        if let Some(path) =
-            root_ui.input(|input| input.raw.dropped_files.iter().find_map(|f| f.path.clone()))
-        {
+        if let Some(path) = root_ui.input(|input| {
+            input.raw.dropped_files.iter().find_map(|file| {
+                let path = file.path();
+                path.is_absolute().then(|| path.to_path_buf())
+            })
+        }) {
             self.select(path);
         }
         egui::Panel::top("top").show(root_ui, |ui| {
