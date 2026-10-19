@@ -217,13 +217,13 @@ impl ToolBoxApp {
 }
 
 impl eframe::App for ToolBoxApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, root_ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         if let Some(path) =
-            ctx.input(|input| input.raw.dropped_files.iter().find_map(|f| f.path.clone()))
+            root_ui.input(|input| input.raw.dropped_files.iter().find_map(|f| f.path.clone()))
         {
             self.select(path);
         }
-        egui::TopBottomPanel::top("top").show(ctx, |ui| {
+        egui::Panel::top("top").show(root_ui, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("ToolBox");
                 ui.separator();
@@ -242,10 +242,10 @@ impl eframe::App for ToolBoxApp {
                 });
             });
         });
-        egui::SidePanel::left("modules")
+        egui::Panel::left("modules")
             .resizable(false)
-            .default_width(240.0)
-            .show(ctx, |ui| {
+            .default_size(240.0)
+            .show(root_ui, |ui| {
                 ui.heading("작업 공간");
                 ui.separator();
                 for engine in Engine::ALL {
@@ -277,9 +277,9 @@ impl eframe::App for ToolBoxApp {
                         }
                     });
             });
-        egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
+        egui::Panel::bottom("status").show(root_ui, |ui| {
             ui.label(&self.notice);
         });
-        egui::CentralPanel::default().show(ctx, |ui| self.module_panel(ui));
+        egui::CentralPanel::default().show(root_ui, |ui| self.module_panel(ui));
     }
 }

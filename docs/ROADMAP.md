@@ -64,3 +64,10 @@
 - 원본 SHA-256, 변경 전 값, 미리보기 당시 전체 표의 지문을 재검사하여 승인 전후 상태 차이를 거부.
 - 전체 변경을 단일 Undo 단계로 처리하고 디스크 저장은 별도 사용자 동작으로 유지.
 - **AI 로그인/MCP 연결 자체는 미구현.** 안전한 CSV 작업 계획 프로토콜의 첫 구현이며 DOCX/XLSX/PPTX/HWPX에 적용된 것은 아님.
+
+## 2026-10-20 egui/eframe 0.36 호환 기반
+
+- ToolBox의 eframe을 0.32에서 0.36 계열로 전환하여 WordCraft·GridCraft·DeckCraft·PdfCraft와 동일한 egui 메이저/마이너 버전 계열을 맞춘다.
+- eframe 0.34 이후 제거된 App::update를 App::ui로 바꾸고, 패널을 egui::Panel::top/left/bottom의 부모 Ui 기반 레이아웃으로 이관한다.
+- 이 변경만으로 WordCraft 등이 내장되는 것은 아니다. 별도의 UI 어댑터와 파일 왕복 테스트가 필요하다.
+- Windows Actions에서 fmt, clippy, 단위 테스트, Release 빌드 검증을 실시하고 실제 Windows 11 GUI 검증은 별도로 수행한다.
