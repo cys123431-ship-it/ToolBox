@@ -1,10 +1,10 @@
 use crate::csv_ui::CsvEditorUi;
 use crate::engines::{self, Engine};
 use crate::preferences::Preferences;
-use eframe::egui;
-use std::path::PathBuf;
 #[cfg(feature = "embedded-wordcraft")]
 use crate::wordcraft_embed::WordCraftEmbed;
+use eframe::egui;
+use std::path::PathBuf;
 
 pub struct ToolBoxApp {
     preferences: Preferences,
@@ -73,7 +73,11 @@ impl ToolBoxApp {
                 }
                 #[cfg(feature = "embedded-wordcraft")]
                 {
-                    if path.extension().and_then(|s| s.to_str()).is_some_and(|s| s.eq_ignore_ascii_case("docx")) {
+                    if path
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .is_some_and(|s| s.eq_ignore_ascii_case("docx"))
+                    {
                         match WordCraftEmbed::open(&path) {
                             Ok(editor) => self.wordcraft = Some(editor),
                             Err(e) => {
@@ -137,7 +141,9 @@ impl ToolBoxApp {
                 ui.horizontal(|ui| {
                     if ui.button("임시 사본 저장").clicked() {
                         self.notice = match editor.save_working_copy() {
-                            Ok(()) => "임시 사본을 저장했습니다. 원본은 변경되지 않았습니다.".into(),
+                            Ok(()) => {
+                                "임시 사본을 저장했습니다. 원본은 변경되지 않았습니다.".into()
+                            }
                             Err(e) => format!("임시 사본 저장 실패: {e}"),
                         };
                     }
