@@ -94,3 +94,18 @@ fn empty_file_can_gain_rows_and_be_saved_as() {
     sheet.save_as(&target).unwrap();
     assert_eq!(CsvWorkspace::open(&target).unwrap().cell(0, 0), "첫 셀");
 }
+
+#[test]
+fn editing_earlier_column_preserves_later_columns_and_ragged_rows() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("ragged.csv");
+    fs::write(&path, "one,two,three\nsingle\n").unwrap();
+    let mut sheet = CsvWorkspace::open(&path).unwrap();
+    sheet.set_cell(0, 0, "changed".into()).unwrap();
+    assert_eq!(sheet.cell(0, 1), "two");
+    assert_eq!(sheet.cell(0, 2), "three");
+    sheet.save_current().unwrap();
+    let reloaded = CsvWorkspace::open(&path).unwrap();
+    assert_eq!(reloaded.cell(0, 2), "three");
+    assert_eq!(reloaded.rows[1].len(), 1);
+}

@@ -117,7 +117,9 @@ impl CsvWorkspace {
         }
         self.snapshot();
         let cells = &mut self.rows[row];
-        cells.resize(col + 1, String::new());
+        if col >= cells.len() {
+            cells.resize(col + 1, String::new());
+        }
         cells[col] = value;
         Ok(true)
     }
@@ -178,6 +180,7 @@ impl CsvWorkspace {
     fn encode(&self, delimiter: u8) -> Result<Vec<u8>, String> {
         let mut writer = WriterBuilder::new()
             .has_headers(false)
+            .flexible(true)
             .delimiter(delimiter)
             .terminator(Terminator::Any(b'\n'))
             .from_writer(Vec::new());
