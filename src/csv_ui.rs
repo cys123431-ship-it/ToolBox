@@ -80,7 +80,12 @@ impl CsvEditorUi {
         Ok(())
     }
 
+    pub fn has_pending_recovery(&self) -> bool {
+        self.pending_recovery.is_some()
+    }
+
     pub fn discard_changes(&mut self) -> Result<(), String> {
+        if self.has_pending_recovery() { return Ok(()); }
         csv_recovery::discard(&self.workspace.path)
     }
 
