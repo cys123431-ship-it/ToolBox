@@ -134,7 +134,40 @@ impl CsvEditorUi {
     /// Returns the new document path when Save As succeeds.
     pub fn show(&mut self, ui: &mut egui::Ui) -> Option<PathBuf> {
         let mut saved_as = None;
+        let mut changed = false;
         ui.heading("CSV / TSV 내부 편집기");
+        if let Some(snapshot) = &self.pending_recovery {
+            let conflict = snapshot.source_sha256 != self.workspace.source_sha256();
+            ui.colored_label(
+                egui::Color32::from_rgb(180, 95, 20),
+                if conflict {
+                    "이전 복구 데이터가 있지만 원본 파일이 외부에서 변경되었습니다."
+                } else {
+                    "저장하지 않은 이전 CSV/TSV 편집 작업을 발견했습니다."
+                },
+            );
+            ui.label("복구는 메모리에만 적용됩니다. 원본 파일을 자동으로 덮어쓰지 않습니다.");
+            if conflict {
+                ui.label("복구 후에는 '다른 이름으로 저장'만 허용합니다.");
+            }
+            let mut restore = false;
+            let mut discard = false;
+            ui.horizontal(|ui| {
+                restore = ui.button("이전 편집 복구").clicked();
+                discard = ui.button("복구 데이터 삭제하고 원본 유지").clicked();
+            });
+            if restore {
+                if let Err(error) = self.restore_pending() {
+                    self.notice = format!("복구 실패: {error}");
+                }
+            } else if discard {
+                if let Err(error) = self.discard_pending() {
+                    self.notice = format!("복구 데이터 삭제 실패: {error}");
+                }
+            }
+            ui.label(&self.notice);
+            return None;
+        }
         ui.label(format!("파일: {}", self.workspace.path.display()));
         ui.label(format!(
             "{}행 × {}열 · {} · {}",
