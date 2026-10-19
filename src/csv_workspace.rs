@@ -88,6 +88,31 @@ impl CsvWorkspace {
         })
     }
 
+    /// Hash of the exact source bytes seen when the file was opened or last saved.
+    pub fn source_sha256(&self) -> String {
+        crate::csv_recovery::digest(&self.source_bytes)
+    }
+
+    /// Apply a recovery snapshot in memory only; the source file is not modified.
+    pub fn restore_rows(&mut self, rows: Vec<Vec<String>>) -> Result<(), String> {
+        if rows.len() > MAX_ROWS || rows.iter().any(|row| row.len() > MAX_COLUMNS) {
+            return Err("복구할 표가 최대 행/열 제한을 초과합니다.".into());
+        }
+        let total = rows
+            .iter()
+            .flat_map(|row| row.iter())
+            .try_fold(0usize, |size, cell| size.checked_add(cell.len()))
+            .ok_or("복구할 표가 너무 큽니다.")?;
+        if total > MAX_BYTES {
+            return Err("복구할 표가 2MB를 초과합니다.".into());
+        }
+        if rows != self.rows {
+            self.snapshot();
+            self.rows = rows;
+        }
+        Ok(())
+    }
+
     pub fn is_dirty(&self) -> bool {
         self.rows != self.saved_rows
     }
