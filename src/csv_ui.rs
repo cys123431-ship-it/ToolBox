@@ -1,4 +1,5 @@
 //! Native CSV/TSV grid and cell editor. No external editor process is required.
+use crate::csv_plan::{CsvEditPlan, CsvPlanPreview};
 use crate::csv_recovery::{self, RecoverySnapshot};
 use crate::csv_workspace::CsvWorkspace;
 use eframe::egui;
@@ -11,6 +12,9 @@ pub struct CsvEditorUi {
     notice: String,
     pending_recovery: Option<RecoverySnapshot>,
     recovery_conflict: bool,
+    plan_input: String,
+    plan_preview: Option<CsvPlanPreview>,
+    plan_notice: String,
 }
 
 impl CsvEditorUi {
@@ -50,6 +54,9 @@ impl CsvEditorUi {
             notice,
             pending_recovery,
             recovery_conflict: false,
+            plan_input: String::new(),
+            plan_preview: None,
+            plan_notice: String::new(),
         })
     }
 
@@ -335,6 +342,81 @@ impl CsvEditorUi {
                         Err(e) => format!("다른 이름으로 저장 실패: {e}"),
                     };
                 }
+            }
+        });
+
+        ui.separator();
+        ui.collapsing("JSON 변경 계획 · 미리보기와 승인", |ui| {
+            ui.label("CSV/TSV 셀 변경 계획만 지원합니다. 외부 AI 연결은 없습니다.");
+            ui.label(format!("현재 원본 SHA-256: {}", self.workspace.source_sha256()));
+            ui.label("0부터 시작하는 row/col과 expected/replacement를 입력하세요.");
+            ui.add(
+                egui::TextEdit::multiline(&mut self.plan_input)
+                    .hint_text("JSON 변경 계획을 붙여넣으세요")
+                    .desired_rows(5),
+            );
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(!self.has_pending_draft(), egui::Button::new("계획 검증 및 미리보기"))
+                    .clicked()
+                {
+                    match CsvEditPlan::parse(&self.plan_input)
+                        .and_then(|plan| plan.preview(&self.workspace))
+                    {
+                        Ok(preview) => {
+                            self.plan_notice = format!(
+                                "{}개 셀의 변경을 검토하세요. 승인 전에는 적용되지 않습니다.",
+                                preview.changes.len()
+                            );
+                            self.plan_preview = Some(preview);
+                        }
+                        Err(e) => {
+                            self.plan_preview = None;
+                            self.plan_notice = format!("계획 거부: {e}");
+                        }
+                    }
+                }
+                if ui.button("계획 취소").clicked() {
+                    self.plan_preview = None;
+                    self.plan_notice = "변경 계획을 취소했습니다.".into();
+                }
+            });
+            if let Some(preview) = &self.plan_preview {
+                ui.label(format!("검토 대상: {}개 셀", preview.changes.len()));
+                egui::ScrollArea::vertical().max_height(160.0).show(ui, |ui| {
+                    for edit in &preview.changes {
+                        ui.label(format!(
+                            "{}행 {}열: {:?} → {:?}",
+                            edit.row + 1,
+                            edit.col + 1,
+                            edit.expected,
+                            edit.replacement
+                        ));
+                    }
+                });
+                if ui
+                    .add_enabled(!self.has_pending_draft(), egui::Button::new("검토한 변경 사항 승인 및 적용"))
+                    .clicked()
+                {
+                    let result = preview.apply(&mut self.workspace);
+                    match result {
+                        Ok(count) => {
+                            self.plan_notice = format!(
+                                "{count}개 셀을 메모리에 적용했습니다. 저장은 별도 승인해야 합니다."
+                            );
+                            self.plan_preview = None;
+                            self.refresh_selection();
+                            changed = true;
+                        }
+                        Err(e) => {
+                            self.plan_notice = format!("적용 거부: {e}");
+                            self.plan_preview = None;
+                        }
+                    }
+                }
+            }
+            if !self.plan_notice.is_empty() {
+                ui.label(&self.plan_notice);
             }
         });
 

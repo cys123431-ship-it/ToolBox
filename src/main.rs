@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod csv_plan;
 mod csv_recovery;
 mod csv_ui;
 mod csv_workspace;

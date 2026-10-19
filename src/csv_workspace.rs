@@ -1,5 +1,7 @@
 //! Bounded, local CSV/TSV editor. This is not an XLSX engine.
 use csv::{ReaderBuilder, Terminator, WriterBuilder};
+use serde::Deserialize;
+use std::collections::HashSet;
 use std::{
     fs,
     io::Write,
@@ -11,6 +13,15 @@ pub const MAX_BYTES: usize = 2 * 1024 * 1024;
 pub const MAX_ROWS: usize = 2_000;
 pub const MAX_COLUMNS: usize = 48;
 const MAX_UNDO: usize = 32;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CellChange {
+    pub row: usize,
+    pub col: usize,
+    pub expected: String,
+    pub replacement: String,
+}
 
 #[derive(Debug)]
 pub struct CsvWorkspace {
@@ -148,6 +159,46 @@ impl CsvWorkspace {
         cells[col] = value;
         Ok(true)
     }
+    /// Atomically apply a reviewed set of cell edits as one undo step.
+    /// This method never saves the underlying file.
+    pub fn apply_batch_cells(&mut self, changes: &[CellChange]) -> Result<usize, String> {
+        if changes.is_empty() || changes.len() > crate::csv_plan::MAX_PLAN_EDITS {
+            return Err("변경할 셀 개수가 허용 범위를 벗어납니다.".into());
+        }
+        let mut seen = HashSet::new();
+        let mut proposed = self.rows.clone();
+        for change in changes {
+            if !seen.insert((change.row, change.col)) {
+                return Err("중복 셀 변경은 허용되지 않습니다.".into());
+            }
+            if change.row >= self.rows.len() || change.col >= MAX_COLUMNS {
+                return Err("유효하지 않은 셀 위치입니다.".into());
+            }
+            if self.cell(change.row, change.col) != change.expected {
+                return Err("셀의 현재 값이 변경 계획과 다릅니다.".into());
+            }
+            if change.expected == change.replacement {
+                return Err("값이 동일한 셀 변경은 허용되지 않습니다.".into());
+            }
+            let row = &mut proposed[change.row];
+            if change.col >= row.len() {
+                row.resize(change.col + 1, String::new());
+            }
+            row[change.col] = change.replacement.clone();
+        }
+        let total = proposed
+            .iter()
+            .flat_map(|row| row.iter())
+            .try_fold(0usize, |sum, cell| sum.checked_add(cell.len()))
+            .ok_or("변경 결과가 너무 큽니다.")?;
+        if total > MAX_BYTES {
+            return Err("변경 결과가 2MB를 초과합니다.".into());
+        }
+        self.snapshot();
+        self.rows = proposed;
+        Ok(changes.len())
+    }
+
     pub fn add_row(&mut self) -> Result<(), String> {
         if self.rows.len() >= MAX_ROWS {
             return Err(format!("최대 {MAX_ROWS}행까지만 지원합니다."));
