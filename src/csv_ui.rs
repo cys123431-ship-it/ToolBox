@@ -295,9 +295,9 @@ impl CsvEditorUi {
                     .set_file_name(&suggested)
                     .save_file()
                 {
-                    self.notice = match self
-                        .apply_draft()
-                        .and_then(|_| self.workspace.save_as(&target))
+                    let old_path = self.workspace.path.clone();
+                    changed = true;
+                    self.notice = match self.apply_draft().and_then(|_| self.workspace.save_as(&target))
                     {
                         Ok(()) => {
                             saved_as = Some(target);
