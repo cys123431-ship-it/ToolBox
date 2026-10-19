@@ -143,9 +143,14 @@ impl ToolBoxApp {
                 })
                 .clicked()
             {
-                self.csv_editor = None;
-                self.selected = None;
-                self.notice = "CSV/TSV 편집기를 닫았습니다.".into();
+                let result = self.csv_editor.as_mut().map(CsvEditorUi::discard_changes);
+                if let Some(Err(e)) = result {
+                    self.notice = format!("복구 데이터 삭제 실패: {e}");
+                } else {
+                    self.csv_editor = None;
+                    self.selected = None;
+                    self.notice = "CSV/TSV 편집기를 닫았습니다.".into();
+                }
             }
             return;
         }
