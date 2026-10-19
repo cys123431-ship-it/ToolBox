@@ -77,3 +77,9 @@
 - 선택 기능 `embedded-wordcraft`로 WordCraft의 `WordApp::ui`를 ToolBox 중앙 UI에 호출하는 첫 PoC.
 - 원본 보호를 위해 임시 사본만 편집/저장. 원본 반영 및 DOCX 왕복 검증은 아직 미구현.
 - Windows 기능 빌드와 실제 화면 검증이 완료되기 전까지 단일 창 DOCX 편집 완성으로 표시하지 않음.
+
+## 2026-10-20 WordCraft DOCX ZIP 검증 보강
+
+- DOCX 열기 및 새 파일 내보내기 전에 ZIP 패키지 구조·필수 OOXML 항목·CRC·항목 크기를 검증한다.
+- 손상된 DOCX와 위험한 ZIP 항목은 거부하고 원본 덮어쓰기는 여전히 금지한다.
+- **주의:** 이는 OOXML 의미 보존/서식 호환성 검증이 아니다. 실제 WordCraft 수정→저장→재열기 및 Word 호환성 수동 검증이 필요하다.

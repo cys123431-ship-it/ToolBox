@@ -1,5 +1,6 @@
 //! Optional WordCraft UI hosted inside the ToolBox egui window.
 //! The source file is copied to a temporary directory before editing.
+use crate::docx_validation::validate_docx_package;
 use eframe::egui;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -28,6 +29,7 @@ impl WordCraftEmbed {
         if fs::metadata(&original).map_err(|e| e.to_string())?.len() > 64 * 1024 * 1024 {
             return Err("64MB 초과 DOCX는 미지원입니다.".into());
         }
+        validate_docx_package(&original)?;
         let directory = tempfile::tempdir().map_err(|e| e.to_string())?;
         let copy = directory
             .path()
@@ -65,6 +67,7 @@ impl WordCraftEmbed {
         if result.get("pending").is_some() {
             return Err("WordCraft 저장이 아직 완료되지 않았습니다.".into());
         }
+        validate_docx_package(&self.working)?;
         Ok(())
     }
 
@@ -100,6 +103,7 @@ fn export_new_file(source: &Path, destination: &Path) -> Result<(), String> {
     {
         return Err("DOCX 확장자로 저장해야 합니다.".into());
     }
+    validate_docx_package(source)?;
     let dir = destination.parent().ok_or("저장할 폴더가 없습니다.")?;
     let mut staged = NamedTempFile::new_in(dir).map_err(|e| e.to_string())?;
     let mut input = fs::File::open(source).map_err(|e| e.to_string())?;
@@ -120,11 +124,21 @@ mod tests {
         let d = tempfile::tempdir().unwrap();
         let source = d.path().join("working.docx");
         let dest = d.path().join("export.docx");
-        fs::write(&source, b"new content").unwrap();
+        crate::docx_validation::write_minimal_docx(&source);
         export_new_file(&source, &dest).unwrap();
-        assert_eq!(fs::read(&dest).unwrap(), b"new content");
+        assert_eq!(fs::read(&dest).unwrap(), fs::read(&source).unwrap());
         fs::write(&dest, b"existing").unwrap();
         assert!(export_new_file(&source, &dest).is_err());
         assert_eq!(fs::read(&dest).unwrap(), b"existing");
+    }
+
+    #[test]
+    fn export_rejects_invalid_docx_without_creating_destination() {
+        let d = tempfile::tempdir().unwrap();
+        let source = d.path().join("broken.docx");
+        let destination = d.path().join("should-not-exist.docx");
+        fs::write(&source, b"not a DOCX archive").unwrap();
+        assert!(export_new_file(&source, &destination).is_err());
+        assert!(!destination.exists());
     }
 }

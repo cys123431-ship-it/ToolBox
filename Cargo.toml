@@ -17,10 +17,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 tempfile = "3"
+zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 
 [features]
 default = []
-embedded-wordcraft = ["dep:wordcraft-doc", "dep:wordcraft-engine", "dep:wordcraft-ui-egui"]
+embedded-wordcraft = ["dep:wordcraft-doc", "dep:wordcraft-engine", "dep:wordcraft-ui-egui", "dep:zip"]
 
 [dependencies.wordcraft-doc]
 git = "https://github.com/storytold/wordcraft"
