@@ -66,3 +66,7 @@ Windows에서 다음을 직접 확인해야 합니다.
 
 - 단위 테스트: 승인 전 파일 미변경, 복수 셀 원자 적용 및 단일 Undo, 원본 SHA 불일치, 중복 좌표, 미지원 JSON 필드, 미리보기 후 표 변경, 유효하지 않은 좌표·예상 값, 과대 JSON 입력.
 - Windows 수동 검증 필요: CSV 열기→계획 붙여넣기→변경 전후 검토→승인→Undo→저장→재열기, 복구 스냅샷 유지, 한글·줄바꿈 셀 표시.
+
+## WordCraft DOCX ZIP 패키지 검사 (선택 기능)
+
+`cargo test --features embedded-wordcraft --all-targets`에서 정상 최소 DOCX ZIP, 손상된 ZIP, 필수 항목 누락, ZIP 경로 탐색, 중복 항목, 새 파일 내보내기 덮어쓰기 방지 테스트를 실행한다. ZIP CRC/구조 검사는 Word 호환성이나 XML 관계·레이아웃 검증을 대체하지 않는다. 실제 DOCX(표, 이미지, 각주, 수식, 한글 글꼴)를 WordCraft에서 열고 수정·내보낸 뒤 Word 및 독립 뷰어에서 확인하는 실파일 시험은 미완료다.
