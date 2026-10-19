@@ -116,7 +116,8 @@ fn restore_rows_keeps_source_untouched_until_save() {
     let path = dir.path().join("recovery.csv");
     fs::write(&path, "original,second\n").unwrap();
     let mut sheet = CsvWorkspace::open(&path).unwrap();
-    sheet.restore_rows(vec![vec!["restored".into(), "second".into()]])
+    sheet
+        .restore_rows(vec![vec!["restored".into(), "second".into()]])
         .unwrap();
     assert!(sheet.is_dirty());
     assert_eq!(fs::read_to_string(&path).unwrap(), "original,second\n");

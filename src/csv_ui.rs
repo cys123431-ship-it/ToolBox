@@ -25,17 +25,23 @@ impl CsvEditorUi {
         let (pending_recovery, notice) = match csv_recovery::load(path) {
             Ok(Some(snapshot)) => {
                 let has_changes = snapshot.rows != workspace.rows
-                    || snapshot.selected.is_some_and(|(r, c)| {
-                        snapshot.draft != workspace.cell(r, c)
-                    });
+                    || snapshot
+                        .selected
+                        .is_some_and(|(r, c)| snapshot.draft != workspace.cell(r, c));
                 if has_changes {
-                    (Some(snapshot), "이전 CSV/TSV 작업의 복구 데이터가 있습니다.".into())
+                    (
+                        Some(snapshot),
+                        "이전 CSV/TSV 작업의 복구 데이터가 있습니다.".into(),
+                    )
                 } else {
                     (None, String::new())
                 }
             }
             Ok(None) => (None, String::new()),
-            Err(e) => (None, format!("복구 데이터 확인 실패 (원본은 정상 열림): {e}")),
+            Err(e) => (
+                None,
+                format!("복구 데이터 확인 실패 (원본은 정상 열림): {e}"),
+            ),
         };
         Ok(Self {
             workspace,
@@ -58,7 +64,10 @@ impl CsvEditorUi {
 
     /// Recovery is opt-in and changes only the in-memory workspace.
     fn restore_pending(&mut self) -> Result<(), String> {
-        let snapshot = self.pending_recovery.as_ref().ok_or("복구할 작업이 없습니다.")?;
+        let snapshot = self
+            .pending_recovery
+            .as_ref()
+            .ok_or("복구할 작업이 없습니다.")?;
         let conflict = snapshot.source_sha256 != self.workspace.source_sha256();
         self.workspace.restore_rows(snapshot.rows.clone())?;
         self.selected = snapshot.selected;
@@ -85,7 +94,9 @@ impl CsvEditorUi {
     }
 
     pub fn discard_changes(&mut self) -> Result<(), String> {
-        if self.has_pending_recovery() { return Ok(()); }
+        if self.has_pending_recovery() {
+            return Ok(());
+        }
         csv_recovery::discard(&self.workspace.path)
     }
 
@@ -238,7 +249,7 @@ impl CsvEditorUi {
                     Ok(()) => {
                         changed = true;
                         "행을 추가했습니다.".into()
-                    },
+                    }
                     Err(e) => e,
                 };
                 self.refresh_selection();
@@ -251,7 +262,7 @@ impl CsvEditorUi {
                     Ok(()) => {
                         changed = true;
                         "열을 추가했습니다.".into()
-                    },
+                    }
                     Err(e) => e,
                 };
                 self.refresh_selection();
@@ -268,7 +279,7 @@ impl CsvEditorUi {
                         Ok(()) => {
                             changed = true;
                             "행을 삭제했습니다. 실행 취소할 수 있습니다.".into()
-                        },
+                        }
                         Err(e) => e,
                     };
                     self.refresh_selection();
@@ -279,10 +290,14 @@ impl CsvEditorUi {
         ui.horizontal(|ui| {
             if ui.button("현재 파일 저장 (백업 생성)").clicked() {
                 if self.recovery_conflict {
-                    self.notice = "원본이 바뀌어 저장할 수 없습니다. 다른 이름으로 저장하세요.".into();
+                    self.notice =
+                        "원본이 바뀌어 저장할 수 없습니다. 다른 이름으로 저장하세요.".into();
                 } else {
                     changed = true;
-                    self.notice = match self.apply_draft().and_then(|_| self.workspace.save_current()) {
+                    self.notice = match self
+                        .apply_draft()
+                        .and_then(|_| self.workspace.save_current())
+                    {
                         Ok(Some(backup)) => format!("저장 완료. 백업: {}", backup.display()),
                         Ok(None) => "변경 사항이 없습니다.".into(),
                         Err(e) => format!("저장 실패: {e}"),
@@ -303,13 +318,17 @@ impl CsvEditorUi {
                 {
                     let old_path = self.workspace.path.clone();
                     changed = true;
-                    self.notice = match self.apply_draft().and_then(|_| self.workspace.save_as(&target))
+                    self.notice = match self
+                        .apply_draft()
+                        .and_then(|_| self.workspace.save_as(&target))
                     {
                         Ok(()) => {
                             self.recovery_conflict = false;
                             saved_as = Some(target);
                             match csv_recovery::discard(&old_path) {
-                                Ok(()) => "새 파일을 저장했습니다. 기존 파일은 그대로 유지됩니다.".into(),
+                                Ok(()) => {
+                                    "새 파일을 저장했습니다. 기존 파일은 그대로 유지됩니다.".into()
+                                }
                                 Err(e) => format!("저장 성공, 이전 복구 데이터 삭제 실패: {e}"),
                             }
                         }

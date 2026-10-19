@@ -133,13 +133,20 @@ impl ToolBoxApp {
                 }
             }
             let dirty = self.csv_editor.as_ref().is_some_and(CsvEditorUi::is_dirty);
-            let pending = self.csv_editor.as_ref().is_some_and(CsvEditorUi::has_pending_recovery);
+            let pending = self
+                .csv_editor
+                .as_ref()
+                .is_some_and(CsvEditorUi::has_pending_recovery);
             ui.add_space(10.0);
             if ui
                 .button(if dirty {
                     "저장하지 않은 변경을 버리고 CSV/TSV 닫기"
                 } else {
-                    if pending { "CSV/TSV 닫기 (복구 데이터 유지)" } else { "CSV/TSV 닫기" }
+                    if pending {
+                        "CSV/TSV 닫기 (복구 데이터 유지)"
+                    } else {
+                        "CSV/TSV 닫기"
+                    }
                 })
                 .clicked()
             {
