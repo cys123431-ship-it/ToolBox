@@ -272,14 +272,16 @@ impl CsvEditorUi {
 
         ui.horizontal(|ui| {
             if ui.button("현재 파일 저장 (백업 생성)").clicked() {
-                self.notice = match self
-                    .apply_draft()
-                    .and_then(|_| self.workspace.save_current())
-                {
-                    Ok(Some(backup)) => format!("저장 완료. 백업: {}", backup.display()),
-                    Ok(None) => "변경 사항이 없습니다.".into(),
-                    Err(e) => format!("저장 실패: {e}"),
-                };
+                if self.recovery_conflict {
+                    self.notice = "원본이 바뀌어 저장할 수 없습니다. 다른 이름으로 저장하세요.".into();
+                } else {
+                    changed = true;
+                    self.notice = match self.apply_draft().and_then(|_| self.workspace.save_current()) {
+                        Ok(Some(backup)) => format!("저장 완료. 백업: {}", backup.display()),
+                        Ok(None) => "변경 사항이 없습니다.".into(),
+                        Err(e) => format!("저장 실패: {e}"),
+                    };
+                }
             }
             if ui.button("다른 이름으로 저장…").clicked() {
                 let suggested = self
