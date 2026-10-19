@@ -19,7 +19,7 @@ Windows 11 우선. 사용자가 로컬에서 DOCX/HWPX/XLSX/PPTX/PDF 문서를 �
 
 ## 현재 구현 범위
 
-eframe 쉘, 독립 실행 앱 탐색/호출, 최근 파일, 경로 설정, 파일 확장자 라우팅. 실제 편집 엔진 내장·HWPX 편집·ChatGPT 로그인은 미구현.
+eframe 쉘, 독립 실행 앱 탐색/호출, 최근 파일, 경로 설정, 파일 확장자 라우팅. CSV/TSV만 ToolBox 내부에서 기본 셀 편집·저장 가능. XLSX/DOCX/PPTX/HWPX 편집·ChatGPT 로그인은 미구현.
 
 ## 작업 선행 조건
 

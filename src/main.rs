@@ -1,6 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod csv_ui;
+mod csv_workspace;
 mod engines;
+#[cfg(test)]
+mod csv_workspace_tests;
 mod preferences;
 mod ui;
 

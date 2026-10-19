@@ -1,3 +1,4 @@
+use crate::csv_ui::CsvEditorUi;
 use crate::engines::{self, Engine};
 use crate::preferences::Preferences;
 use eframe::egui;
@@ -5,6 +6,7 @@ use std::path::PathBuf;
 
 pub struct ToolBoxApp {
     preferences: Preferences,
+    csv_editor: Option<CsvEditorUi>,
     active: Engine,
     selected: Option<PathBuf>,
     notice: String,
@@ -15,6 +17,7 @@ impl ToolBoxApp {
     pub fn new() -> Self {
         Self {
             preferences: Preferences::load(),
+            csv_editor: None,
             active: Engine::Document,
             selected: None,
             notice: "현재 버전은 편집기 연결 실험용입니다. 통합 편집기는 개발 중입니다.".into(),
@@ -23,8 +26,31 @@ impl ToolBoxApp {
     }
 
     fn select(&mut self, path: PathBuf) {
+        if let Some(editor) = self.csv_editor.as_ref() {
+            if editor.workspace.path == path {
+                self.active = Engine::Spreadsheet;
+                return;
+            }
+            if editor.is_dirty() {
+                self.notice = "CSV/TSV의 변경 사항을 저장하거나 편집기를 닫은 뒤 다른 파일을 선택하세요.".into();
+                return;
+            }
+        }
         match Engine::from_path(&path) {
             Some(engine) => {
+                let is_csv = path.extension().and_then(|s| s.to_str())
+                    .is_some_and(|s| s.eq_ignore_ascii_case("csv") || s.eq_ignore_ascii_case("tsv"));
+                if is_csv {
+                    match CsvEditorUi::open(&path) {
+                        Ok(editor) => self.csv_editor = Some(editor),
+                        Err(error) => {
+                            self.notice = format!("CSV/TSV 열기 실패: {error}");
+                            return;
+                        }
+                    }
+                } else {
+                    self.csv_editor = None;
+                }
                 self.active = engine;
                 self.selected = Some(path.clone());
                 self.preferences.record_recent(&path);
@@ -93,6 +119,28 @@ impl ToolBoxApp {
             {
                 self.select(path);
             }
+        }
+        if self.active == Engine::Spreadsheet && self.csv_editor.is_some() {
+            let saved_as = self.csv_editor.as_mut().and_then(|editor| editor.show(ui));
+            if let Some(path) = saved_as {
+                self.selected = Some(path.clone());
+                self.preferences.record_recent(&path);
+                if let Err(error) = self.preferences.save() {
+                    self.notice = format!("최근 파일 목록 저장 실패: {error}");
+                }
+            }
+            let dirty = self.csv_editor.as_ref().is_some_and(CsvEditorUi::is_dirty);
+            ui.add_space(10.0);
+            if ui.button(if dirty {
+                "저장하지 않은 변경을 버리고 CSV/TSV 닫기"
+            } else {
+                "CSV/TSV 닫기"
+            }).clicked() {
+                self.csv_editor = None;
+                self.selected = None;
+                self.notice = "CSV/TSV 편집기를 닫았습니다.".into();
+            }
+            return;
         }
         if let Some(path) = self.selected.clone() {
             ui.label(format!("선택한 파일: {}", path.display()));

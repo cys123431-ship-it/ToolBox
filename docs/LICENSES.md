@@ -20,7 +20,7 @@ ToolBox의 신규 소스는 MIT 라이선스. LICENSE를 참조한다.
 
 ## 현재 직접 사용 중인 Rust 의존성
 
-eframe, rfd, serde, serde_json은 crates.io에서 빌드 시 설치한다. 실제 번들에 포함된 모든 전이 의존성과 라이선스는 Cargo.lock 생성 후 별도로 확인·고지한다. 자동 검증과 릴리스 시 라이선스 목록 생성 작업을 추가할 예정이다. 서드파티 라이브러리의 라이선스가 이 프로젝트의 LICENSE로 변경되는 것은 아니다.
+csv, eframe, rfd, serde, serde_json, tempfile은 crates.io에서 빌드 시 설치한다. 실제 번들에 포함된 모든 전이 의존성과 라이선스는 Cargo.lock 생성 후 별도로 확인·고지한다. 자동 검증과 릴리스 시 라이선스 목록 생성 작업을 추가할 예정이다. 서드파티 라이브러리의 라이선스가 이 프로젝트의 LICENSE로 변경되는 것은 아니다.
 
 ## AI 로그인
 

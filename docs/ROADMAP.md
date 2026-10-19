@@ -5,7 +5,7 @@
 | 단계 | 작업 | 완료 조건 |
 |---|---|---|
 | 0 (진행) | 저장소 초기화·Windows 앱·독립 실행 편집기 탐지 | Windows 빌드·테스트 통과, 4종 설치 편집기와 파일 열기 확인 |
-| 1 | 공통 작업 공간·저장·복구 | 열린 파일별 탭, 비정상 종료 복구, 설정 저장 |
+| 1 (부분 구현) | 공통 작업 공간·저장·복구 | CSV/TSV 기본 편집·백업 구현. 열린 파일별 탭, 자동 복구, 설정 저장 검증은 미완료 |
 | 2 | WordCraft 편집 UI/엔진 통합 | DOCX를 ToolBox **안에서** 편집·저장·재열기 |
 | 3 | GridCraft 통합 | XLSX 수식·차트가 ToolBox 안에서 작동하고 저장 |
 | 4 | DeckCraft 통합 | PPTX 객체 편집, 슬라이드 추가, 발표, 재열기 |
@@ -15,9 +15,17 @@
 | 8 | AI 에이전트 | Codex/MCP를 통해 3가지 문서 형식에 대한 안전한 편집 명령 |
 | 9 | 통합 품질/배포 | 보안, 라이선스, 파일 왕복, 대용량 테스트, Windows 설치기 |
 
+## 2026-10-20 CSV/TSV 기본 편집기 작업
+
+- ToolBox 안에서 UTF-8 CSV/TSV 셀·행·열 편집, 실행 취소/다시 실행, 저장/다른 이름 저장을 구현.
+- 저장 전에 디스크의 외부 변경 여부를 검사하고, 저장 직전 원본을 고유한 .bak 파일로 보관.
+- 다른 이름으로 저장은 기존 파일 덮어쓰기를 금지.
+- 파싱·왕복·BOM·한글·멀티라인·외부 변경 감지·Undo/Redo 단위 테스트 추가.
+- 아직 **XLSX 편집 엔진 통합, 자동 저장, 탭, 크래시 복구**가 아니다.
+
 ## 바로 다음 단계
 
-1. GitHub Actions에서 Windows cargo fmt/clippy/test/build가 모두 성공하는지 확인하고 실패 시 수정한다.
+1. CSV/TSV 변경이 Windows Actions에서 fmt/clippy/test/build 통과하는지 확인하고 실패 시 수정한다.
 2. Windows 11에서 실제 ToolBox 창을 띄운다.
 3. WordCraft/GridCraft/DeckCraft/PdfCraft 각각 실행 파일 경로 및 DOCX/XLSX/PPTX/PDF 열기를 시험한다.
 4. rHWP Rust/WASM/CLI API를 조사해 **오프라인 데스크톱 편집 화면** 경로를 결정한다.
