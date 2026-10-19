@@ -3,7 +3,7 @@
 use eframe::egui;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tempfile::TempDir;
+use tempfile::{NamedTempFile, TempDir};
 use wordcraft_doc::Document;
 use wordcraft_engine::Session;
 use wordcraft_ui_egui::{Services, WordApp};
@@ -11,6 +11,7 @@ use wordcraft_ui_egui::{Services, WordApp};
 pub struct WordCraftEmbed {
     app: WordApp,
     original: PathBuf,
+    working: PathBuf,
     _temporary_directory: TempDir,
 }
 
@@ -43,6 +44,7 @@ impl WordCraftEmbed {
         Ok(Self {
             app,
             original,
+            working: copy,
             _temporary_directory: directory,
         })
     }
@@ -56,8 +58,28 @@ impl WordCraftEmbed {
     }
 
     pub fn save_working_copy(&mut self) -> Result<(), String> {
-        self.app.run("file.save", serde_json::json!({}))?;
+        if self.app.session.path.as_deref() != Some(self.working.as_path()) {
+            return Err("WordCraft에서 다른 파일을 열었거나 저장했습니다.".into());
+        }
+        let result = self.app.run("file.save", serde_json::json!({}))?;
+        if result.get("pending").is_some() {
+            return Err("WordCraft 저장이 아직 완료되지 않았습니다.".into());
+        }
         Ok(())
+    }
+
+    pub fn export_as(&mut self) -> Result<Option<PathBuf>, String> {
+        let Some(destination) = rfd::FileDialog::new()
+            .add_filter("Word 문서", &["docx"])
+            .save_file() else {
+            return Ok(None);
+        };
+        if destination == self.original {
+            return Err("원본을 직접 덮어쓰지 않습니다. 새 파일 이름을 지정하세요.".into());
+        }
+        self.save_working_copy()?;
+        export_new_file(&self.working, &destination)?;
+        Ok(Some(destination))
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui) {
@@ -66,5 +88,36 @@ impl WordCraftEmbed {
 
     pub fn raw_input_hook(&mut self, raw: &mut egui::RawInput) {
         self.app.raw_input_hook(raw);
+    }
+}
+
+fn export_new_file(source: &Path, destination: &Path) -> Result<(), String> {
+    if !destination.extension().and_then(|s| s.to_str()).is_some_and(|s| s.eq_ignore_ascii_case("docx")) {
+        return Err("DOCX 확장자로 저장해야 합니다.".into());
+    }
+    let dir = destination.parent().ok_or("저장할 폴더가 없습니다.")?;
+    let mut staged = NamedTempFile::new_in(dir).map_err(|e| e.to_string())?;
+    let mut input = fs::File::open(source).map_err(|e| e.to_string())?;
+    std::io::copy(&mut input, &mut staged).map_err(|e| e.to_string())?;
+    staged.as_file_mut().sync_all().map_err(|e| e.to_string())?;
+    staged.persist_noclobber(destination).map_err(|e| format!("기존 파일은 덮어쓰지 않습니다: {}", e.error))?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn export_is_non_destructive() {
+        let d = tempfile::tempdir().unwrap();
+        let source = d.path().join("working.docx");
+        let dest = d.path().join("export.docx");
+        fs::write(&source, b"new content").unwrap();
+        export_new_file(&source, &dest).unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"new content");
+        fs::write(&dest, b"existing").unwrap();
+        assert!(export_new_file(&source, &dest).is_err());
+        assert_eq!(fs::read(&dest).unwrap(), b"existing");
     }
 }

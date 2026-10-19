@@ -81,4 +81,4 @@ CSV/TSV 내부 편집기에서 JSON 셀 변경 계획을 붙여넣고 **계획 �
 
 ## WordCraft 내장 UI 실험 (선택 기능)
 
-`cargo run --features embedded-wordcraft`는 WordCraft UI를 ToolBox 창 안에 직접 표시하도록 시도하는 실험 기능입니다. DOCX 원본을 임시 폴더로 복사해 편집하며 **원본 파일에는 저장하지 않습니다**. 현재 '임시 사본 저장'도 임시 파일만 저장합니다. DOCX 왕복 검증, 안전한 원본 반영 및 자동 복구 기능은 미완료입니다. [상세](docs/WORDCRAFT_POC.md).
+`cargo run --features embedded-wordcraft`는 WordCraft UI를 ToolBox 창 안에 직접 표시하도록 시도하는 실험 기능입니다. DOCX 원본을 임시 폴더로 복사해 편집하며 **원본 파일에는 저장하지 않습니다**. '새 DOCX 파일로 내보내기'는 기존 파일을 덮어쓰지 않고 새로운 경로에 저장합니다. '임시 사본 저장'은 임시 파일만 저장합니다. DOCX 왕복 검증, 안전한 원본 반영 및 자동 복구 기능은 미완료입니다. [상세](docs/WORDCRAFT_POC.md).

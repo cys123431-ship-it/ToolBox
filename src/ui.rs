@@ -147,6 +147,13 @@ impl ToolBoxApp {
                             Err(e) => format!("임시 사본 저장 실패: {e}"),
                         };
                     }
+                    if ui.button("새 DOCX 파일로 내보내기…").clicked() {
+                        self.notice = match editor.export_as() {
+                            Ok(Some(path)) => format!("새 DOCX 파일 저장: {}", path.display()),
+                            Ok(None) => "저장을 취소했습니다.".into(),
+                            Err(e) => format!("내보내기 실패: {e}"),
+                        };
+                    }
                     if ui.button("임시 편집 종료 (사본 폐기)").clicked() {
                         close = true;
                     }
