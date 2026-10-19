@@ -348,7 +348,10 @@ impl CsvEditorUi {
         ui.separator();
         ui.collapsing("JSON 변경 계획 · 미리보기와 승인", |ui| {
             ui.label("CSV/TSV 셀 변경 계획만 지원합니다. 외부 AI 연결은 없습니다.");
-            ui.label(format!("현재 원본 SHA-256: {}", self.workspace.source_sha256()));
+            ui.label(format!(
+                "현재 원본 SHA-256: {}",
+                self.workspace.source_sha256()
+            ));
             ui.label("0부터 시작하는 row/col과 expected/replacement를 입력하세요.");
             ui.add(
                 egui::TextEdit::multiline(&mut self.plan_input)
@@ -357,7 +360,10 @@ impl CsvEditorUi {
             );
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(!self.has_pending_draft(), egui::Button::new("계획 검증 및 미리보기"))
+                    .add_enabled(
+                        !self.has_pending_draft(),
+                        egui::Button::new("계획 검증 및 미리보기"),
+                    )
                     .clicked()
                 {
                     match CsvEditPlan::parse(&self.plan_input)
@@ -383,19 +389,24 @@ impl CsvEditorUi {
             });
             if let Some(preview) = &self.plan_preview {
                 ui.label(format!("검토 대상: {}개 셀", preview.changes.len()));
-                egui::ScrollArea::vertical().max_height(160.0).show(ui, |ui| {
-                    for edit in &preview.changes {
-                        ui.label(format!(
-                            "{}행 {}열: {:?} → {:?}",
-                            edit.row + 1,
-                            edit.col + 1,
-                            edit.expected,
-                            edit.replacement
-                        ));
-                    }
-                });
+                egui::ScrollArea::vertical()
+                    .max_height(160.0)
+                    .show(ui, |ui| {
+                        for edit in &preview.changes {
+                            ui.label(format!(
+                                "{}행 {}열: {:?} → {:?}",
+                                edit.row + 1,
+                                edit.col + 1,
+                                edit.expected,
+                                edit.replacement
+                            ));
+                        }
+                    });
                 if ui
-                    .add_enabled(!self.has_pending_draft(), egui::Button::new("검토한 변경 사항 승인 및 적용"))
+                    .add_enabled(
+                        !self.has_pending_draft(),
+                        egui::Button::new("검토한 변경 사항 승인 및 적용"),
+                    )
                     .clicked()
                 {
                     let result = preview.apply(&mut self.workspace);

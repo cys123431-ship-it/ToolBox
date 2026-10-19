@@ -34,8 +34,8 @@ impl CsvEditPlan {
         if json.len() > MAX_PLAN_BYTES {
             return Err("변경 계획은 최대 256KB까지 허용됩니다.".into());
         }
-        let plan: Self = serde_json::from_str(json)
-            .map_err(|e| format!("변경 계획 JSON 오류: {e}"))?;
+        let plan: Self =
+            serde_json::from_str(json).map_err(|e| format!("변경 계획 JSON 오류: {e}"))?;
         if plan.version != PLAN_VERSION {
             return Err("지원하지 않는 변경 계획 버전입니다.".into());
         }
@@ -165,12 +165,18 @@ mod tests {
     fn rejects_wrong_hash_duplicate_and_unknown_fields() {
         let (_dir, workspace) = fixture();
         let wrong_hash = r#"{"version":1,"source_sha256":"0000000000000000000000000000000000000000000000000000000000000000","changes":[{"row":1,"col":1,"expected":"80","replacement":"85"}]}"#;
-        assert!(CsvEditPlan::parse(wrong_hash).unwrap().preview(&workspace).is_err());
+        assert!(CsvEditPlan::parse(wrong_hash)
+            .unwrap()
+            .preview(&workspace)
+            .is_err());
         let duplicate = plan_json(
             &workspace,
             r#"[{"row":1,"col":1,"expected":"80","replacement":"85"},{"row":1,"col":1,"expected":"80","replacement":"86"}]"#,
         );
-        assert!(CsvEditPlan::parse(&duplicate).unwrap().preview(&workspace).is_err());
+        assert!(CsvEditPlan::parse(&duplicate)
+            .unwrap()
+            .preview(&workspace)
+            .is_err());
         let unknown = plan_json(
             &workspace,
             r#"[{"row":1,"col":1,"expected":"80","replacement":"85","command":"shell"}]"#,
@@ -210,7 +216,10 @@ mod tests {
             &workspace,
             r#"[{"row":1,"col":1,"expected":"70","replacement":"85"}]"#,
         );
-        assert!(CsvEditPlan::parse(&stale).unwrap().preview(&workspace).is_err());
+        assert!(CsvEditPlan::parse(&stale)
+            .unwrap()
+            .preview(&workspace)
+            .is_err());
     }
 
     #[test]
