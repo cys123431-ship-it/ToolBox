@@ -160,21 +160,16 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("duplicate.docx");
         let mut writer = zip::ZipWriter::new(File::create(&path).unwrap());
-        for _ in 0..2 {
-            writer
-                .start_file("word/document.xml", SimpleFileOptions::default())
-                .unwrap();
-            writer.write_all(b"<w:document/>").unwrap();
-        }
         writer
             .start_file("word/document.xml", SimpleFileOptions::default())
             .unwrap();
         writer.write_all(b"<w:document/>").unwrap();
-        // ZIP 2.x prevents duplicate names during fixture construction.
+        // ZIP 2.x refuses duplicate names before writing a second entry.
         assert!(writer
             .start_file("word/document.xml", SimpleFileOptions::default())
             .is_err());
     }
+
     #[test]
     fn corrupted_entry_crc_is_rejected() {
         let dir = tempfile::tempdir().unwrap();
@@ -192,5 +187,4 @@ mod tests {
         std::fs::write(&path, bytes).unwrap();
         assert!(validate_docx_package(&path).is_err());
     }
-
 }
