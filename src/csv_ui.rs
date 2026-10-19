@@ -376,6 +376,9 @@ impl CsvEditorUi {
         } else {
             ui.weak("빈 파일입니다. '행 추가'로 시작하세요.");
         }
+        if changed {
+            self.persist_recovery();
+        }
         if !self.notice.is_empty() {
             ui.label(&self.notice);
         }
