@@ -2,7 +2,7 @@ name: WordCraft embedded experiment
 
 on:
   push:
-    branches: ['feat/wordcraft-*']
+    branches: ['feat/wordcraft-*', 'fix/wordcraft-*']
   workflow_dispatch:
 
 permissions:
