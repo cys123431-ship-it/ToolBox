@@ -300,8 +300,12 @@ impl CsvEditorUi {
                     self.notice = match self.apply_draft().and_then(|_| self.workspace.save_as(&target))
                     {
                         Ok(()) => {
+                            self.recovery_conflict = false;
                             saved_as = Some(target);
-                            "새 파일을 저장했습니다. 기존 파일은 그대로 유지됩니다.".into()
+                            match csv_recovery::discard(&old_path) {
+                                Ok(()) => "새 파일을 저장했습니다. 기존 파일은 그대로 유지됩니다.".into(),
+                                Err(e) => format!("저장 성공, 이전 복구 데이터 삭제 실패: {e}"),
+                            }
                         }
                         Err(e) => format!("다른 이름으로 저장 실패: {e}"),
                     };
