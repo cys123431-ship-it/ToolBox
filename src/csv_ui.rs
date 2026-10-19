@@ -22,11 +22,28 @@ impl CsvEditorUi {
             Some((0, 0))
         };
         let draft = workspace.cell(0, 0).to_owned();
+        let (pending_recovery, notice) = match csv_recovery::load(path) {
+            Ok(Some(snapshot)) => {
+                let has_changes = snapshot.rows != workspace.rows
+                    || snapshot.selected.is_some_and(|(r, c)| {
+                        snapshot.draft != workspace.cell(r, c)
+                    });
+                if has_changes {
+                    (Some(snapshot), "이전 CSV/TSV 작업의 복구 데이터가 있습니다.".into())
+                } else {
+                    (None, String::new())
+                }
+            }
+            Ok(None) => (None, String::new()),
+            Err(e) => (None, format!("복구 데이터 확인 실패 (원본은 정상 열림): {e}")),
+        };
         Ok(Self {
             workspace,
             selected,
             draft,
-            notice: String::new(),
+            notice,
+            pending_recovery,
+            recovery_conflict: false,
         })
     }
 
