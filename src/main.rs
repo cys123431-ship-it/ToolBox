@@ -14,6 +14,7 @@ mod ui;
 #[cfg(feature = "embedded-wordcraft")]
 mod wordcraft_embed;
 mod workspace;
+mod document_session;
 
 use eframe::egui;
 

@@ -1,7 +1,7 @@
 //! Shared file routing and lightweight workspace tabs.
 //! Tabs record selected paths; they do not represent simultaneous live editor sessions.
 use crate::engines::Engine;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FormatKind {
@@ -106,46 +106,6 @@ impl AdapterKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DocumentTab {
-    pub path: PathBuf,
-    pub format: FormatKind,
-}
-
-#[derive(Debug, Default)]
-pub struct WorkspaceTabs {
-    tabs: Vec<DocumentTab>,
-    active: Option<usize>,
-}
-
-impl WorkspaceTabs {
-    pub fn tabs(&self) -> &[DocumentTab] {
-        &self.tabs
-    }
-
-    pub fn active_index(&self) -> Option<usize> {
-        self.active
-    }
-
-    pub fn active(&self) -> Option<&DocumentTab> {
-        self.active.and_then(|index| self.tabs.get(index))
-    }
-
-    /// Only call after the current editor's switch guard and new file load succeed.
-    pub fn activate_or_insert(&mut self, path: &Path) {
-        let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-        let Some(format) = FormatKind::from_path(&path) else {
-            return;
-        };
-        if let Some(index) = self.tabs.iter().position(|tab| tab.path == path) {
-            self.active = Some(index);
-        } else {
-            self.tabs.push(DocumentTab { path, format });
-            self.active = Some(self.tabs.len() - 1);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,10 +119,7 @@ mod tests {
             assert_eq!(FormatKind::from_path(Path::new(name)), Some(kind));
             assert_eq!(Engine::from_path(Path::new(name)), Some(kind.engine()));
         }
-        assert_eq!(
-            FormatKind::from_path(Path::new("x.TSV")),
-            Some(FormatKind::Csv)
-        );
+        assert_eq!(FormatKind::from_path(Path::new("x.TSV")), Some(FormatKind::Csv));
         assert_eq!(FormatKind::from_path(Path::new("x.exe")), None);
     }
 
@@ -174,17 +131,5 @@ mod tests {
                 assert!(!kind.adapter().can_save_original_in_app());
             }
         }
-        assert_eq!(FormatKind::Hwpx.adapter(), AdapterKind::Unavailable);
-    }
-
-    #[test]
-    fn reselecting_path_reuses_tab() {
-        let mut tabs = WorkspaceTabs::default();
-        tabs.activate_or_insert(Path::new("a.docx"));
-        tabs.activate_or_insert(Path::new("b.xlsx"));
-        tabs.activate_or_insert(Path::new("a.docx"));
-        assert_eq!(tabs.tabs().len(), 2);
-        assert_eq!(tabs.active_index(), Some(0));
-        assert_eq!(tabs.active().unwrap().format, FormatKind::Docx);
     }
 }
