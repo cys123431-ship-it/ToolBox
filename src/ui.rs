@@ -1,12 +1,16 @@
+use crate::document_session::DocumentSessions;
 use crate::engines::{self, Engine};
 use crate::preferences::Preferences;
+use crate::workspace::FormatKind;
 use eframe::egui;
 use std::path::PathBuf;
 
 pub struct ToolBoxApp {
     preferences: Preferences,
+    sessions: DocumentSessions,
+    #[cfg(feature = "embedded-wordcraft")]
+    confirm_discard_wordcraft: bool,
     active: Engine,
-    selected: Option<PathBuf>,
     notice: String,
     show_settings: bool,
 }
@@ -15,26 +19,33 @@ impl ToolBoxApp {
     pub fn new() -> Self {
         Self {
             preferences: Preferences::load(),
+            sessions: DocumentSessions::default(),
+            #[cfg(feature = "embedded-wordcraft")]
+            confirm_discard_wordcraft: false,
             active: Engine::Document,
-            selected: None,
             notice: "현재 버전은 편집기 연결 실험용입니다. 통합 편집기는 개발 중입니다.".into(),
             show_settings: false,
         }
     }
 
     fn select(&mut self, path: PathBuf) {
-        match Engine::from_path(&path) {
-            Some(engine) => {
-                self.active = engine;
-                self.selected = Some(path.clone());
-                self.preferences.record_recent(&path);
-                if let Err(error) = self.preferences.save() {
-                    self.notice = format!("최근 파일 목록 저장 실패: {error}");
-                } else {
-                    self.notice = format!("선택됨: {}", path.display());
+        match self.sessions.open(&path) {
+            Ok(()) => {
+                #[cfg(feature = "embedded-wordcraft")]
+                {
+                    self.confirm_discard_wordcraft = false;
+                }
+                if let Some(session) = self.sessions.active() {
+                    self.active = session.format.engine();
+                    let path = session.path.clone();
+                    self.preferences.record_recent(&path);
+                    self.notice = match self.preferences.save() {
+                        Ok(()) => format!("선택됨: {}", path.display()),
+                        Err(e) => format!("파일 선택됨 (최근 파일 저장 실패: {e})"),
+                    };
                 }
             }
-            None => self.notice = "아직 지원하지 않는 파일 확장자입니다.".into(),
+            Err(e) => self.notice = format!("파일 열기 실패: {e}"),
         }
     }
 
@@ -68,6 +79,61 @@ impl ToolBoxApp {
     }
 
     fn module_panel(&mut self, ui: &mut egui::Ui) {
+        #[cfg(feature = "embedded-wordcraft")]
+        if self.active == Engine::Document && self.sessions.active_is_docx() {
+            let mut close = false;
+            if let Some(editor) = self.sessions.active_docx_mut() {
+                ui.heading("DOCX · WordCraft 내장 편집 실험");
+                ui.label("원본을 임시 사본으로 복사해 편집합니다. 원본은 자동 변경되지 않습니다.");
+                ui.label(if editor.dirty() {
+                    "편집 상태: 임시 사본에 저장하지 않은 변경 사항이 있습니다."
+                } else {
+                    "편집 상태: WordCraft가 보고한 미저장 변경 사항 없음 (원본 저장과 별개)"
+                });
+                ui.horizontal(|ui| {
+                    if ui.button("임시 사본 저장").clicked() {
+                        self.notice = match editor.save_working_copy() {
+                            Ok(()) => {
+                                "임시 사본을 저장했습니다. 원본은 변경되지 않았습니다.".into()
+                            }
+                            Err(e) => format!("임시 사본 저장 실패: {e}"),
+                        };
+                    }
+                    if ui.button("새 DOCX 파일로 내보내기…").clicked() {
+                        self.notice = match editor.export_as() {
+                            Ok(Some(path)) => format!("새 DOCX 파일 저장: {}", path.display()),
+                            Ok(None) => "저장을 취소했습니다.".into(),
+                            Err(e) => format!("내보내기 실패: {e}"),
+                        };
+                    }
+                    if ui.button("임시 편집 종료…").clicked() {
+                        self.confirm_discard_wordcraft = true;
+                    }
+                });
+                if self.confirm_discard_wordcraft {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(195, 120, 35),
+                        "임시 사본은 저장했더라도 종료 시 삭제됩니다. 필요한 내용은 먼저 새 DOCX로 내보내세요. 폐기하시겠습니까?",
+                    );
+                    ui.horizontal(|ui| {
+                        if ui.button("예, 임시 사본 폐기").clicked() {
+                            close = true;
+                        }
+                        if ui.button("취소하고 계속 편집").clicked() {
+                            self.confirm_discard_wordcraft = false;
+                        }
+                    });
+                }
+                ui.separator();
+                editor.show(ui);
+            }
+            if close {
+                self.sessions.close_active();
+                self.confirm_discard_wordcraft = false;
+                self.notice = "DOCX 임시 사본을 폐기하고 편집기를 닫았습니다.".into();
+            }
+            return;
+        }
         ui.heading(self.active.title());
         ui.label(self.active.description());
         ui.add_space(12.0);
@@ -94,7 +160,55 @@ impl ToolBoxApp {
                 self.select(path);
             }
         }
-        if let Some(path) = self.selected.clone() {
+        if self.active == Engine::Spreadsheet && self.sessions.active_csv_mut().is_some() {
+            let saved_as = self
+                .sessions
+                .active_csv_mut()
+                .and_then(|editor| editor.show(ui));
+            if let Some(path) = saved_as {
+                if let Err(e) = self.sessions.rename_active_csv(&path) {
+                    self.notice = format!("CSV 세션 경로 갱신 실패: {e}");
+                }
+                self.preferences.record_recent(&path);
+                if let Err(error) = self.preferences.save() {
+                    self.notice = format!("최근 파일 목록 저장 실패: {error}");
+                }
+            }
+            let dirty = self
+                .sessions
+                .active_csv_mut()
+                .is_some_and(|editor| editor.is_dirty());
+            let pending = self
+                .sessions
+                .active_csv_mut()
+                .is_some_and(|editor| editor.has_pending_recovery());
+            ui.add_space(10.0);
+            if ui
+                .button(if dirty {
+                    "저장하지 않은 변경을 버리고 CSV/TSV 닫기"
+                } else {
+                    if pending {
+                        "CSV/TSV 닫기 (복구 데이터 유지)"
+                    } else {
+                        "CSV/TSV 닫기"
+                    }
+                })
+                .clicked()
+            {
+                let result = self
+                    .sessions
+                    .active_csv_mut()
+                    .map(|editor| editor.discard_changes());
+                if let Some(Err(e)) = result {
+                    self.notice = format!("복구 데이터 삭제 실패: {e}");
+                } else {
+                    self.sessions.close_active();
+                    self.notice = "CSV/TSV 편집기를 닫았습니다.".into();
+                }
+            }
+            return;
+        }
+        if let Some(path) = self.sessions.active_path().map(|path| path.to_path_buf()) {
             ui.label(format!("선택한 파일: {}", path.display()));
             if Engine::from_path(&path) == Some(self.active)
                 && ui
@@ -150,13 +264,24 @@ impl ToolBoxApp {
 }
 
 impl eframe::App for ToolBoxApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Some(path) =
-            ctx.input(|input| input.raw.dropped_files.iter().find_map(|f| f.path.clone()))
-        {
+    #[cfg(feature = "embedded-wordcraft")]
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw: &mut egui::RawInput) {
+        if self.active == Engine::Document {
+            if let Some(editor) = self.sessions.active_docx_mut() {
+                editor.raw_input_hook(raw);
+            }
+        }
+    }
+    fn ui(&mut self, root_ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if let Some(path) = root_ui.input(|input| {
+            input.raw.dropped_files.iter().find_map(|file| {
+                let path = file.path();
+                path.is_absolute().then(|| path.to_path_buf())
+            })
+        }) {
             self.select(path);
         }
-        egui::TopBottomPanel::top("top").show(ctx, |ui| {
+        egui::Panel::top("top").show(root_ui, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("ToolBox");
                 ui.separator();
@@ -175,10 +300,75 @@ impl eframe::App for ToolBoxApp {
                 });
             });
         });
-        egui::SidePanel::left("modules")
+        egui::Panel::top("workspace_actions").show(root_ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                if ui.button("파일 열기…").clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .set_title("ToolBox - 파일 열기")
+                        .pick_file()
+                    {
+                        self.select(path);
+                    }
+                }
+                ui.separator();
+                if let Some(tab) = self.sessions.active() {
+                    let adapter = tab.adapter();
+                    ui.label(format!(
+                        "{} · {} · {}",
+                        tab.format.label(),
+                        tab.format.engine().key(),
+                        adapter.label()
+                    ));
+                    if !adapter.can_save_original_in_app() {
+                        ui.weak("이 형식의 ToolBox 원본 저장은 미지원");
+                    }
+                } else {
+                    ui.weak("파일을 선택하세요 · 저장은 각 편집기에서 제공");
+                }
+            });
+        });
+        egui::Panel::top("workspace_tabs").show(root_ui, |ui| {
+            let tabs: Vec<_> = self
+                .sessions
+                .sessions()
+                .iter()
+                .enumerate()
+                .map(|(index, tab)| {
+                    let name = tab
+                        .path
+                        .file_name()
+                        .map(|name| name.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| tab.path.display().to_string());
+                    (index, tab.path.clone(), name)
+                })
+                .collect();
+            if tabs.is_empty() {
+                ui.horizontal_wrapped(|ui| {
+                    ui.weak("형식별 작업공간:");
+                    for format in FormatKind::CORE {
+                        ui.label(format.label());
+                    }
+                });
+            } else {
+                egui::ScrollArea::horizontal().show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        for (index, path, name) in tabs {
+                            if ui
+                                .selectable_label(self.sessions.active_index() == Some(index), name)
+                                .on_hover_text(path.display().to_string())
+                                .clicked()
+                            {
+                                self.select(path);
+                            }
+                        }
+                    });
+                });
+            }
+        });
+        egui::Panel::left("modules")
             .resizable(false)
-            .default_width(240.0)
-            .show(ctx, |ui| {
+            .default_size(240.0)
+            .show(root_ui, |ui| {
                 ui.heading("작업 공간");
                 ui.separator();
                 for engine in Engine::ALL {
@@ -210,9 +400,38 @@ impl eframe::App for ToolBoxApp {
                         }
                     });
             });
-        egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
+        egui::Panel::bottom("status").show(root_ui, |ui| {
             ui.label(&self.notice);
         });
-        egui::CentralPanel::default().show(ctx, |ui| self.module_panel(ui));
+        egui::CentralPanel::default().show(root_ui, |ui| self.module_panel(ui));
+    }
+}
+
+#[cfg(all(test, feature = "embedded-wordcraft"))]
+mod wordcraft_switch_tests {
+    use super::*;
+
+    #[test]
+    fn saved_temporary_docx_survives_switch_to_other_document() {
+        let dir = tempfile::tempdir().unwrap();
+        let original = dir.path().join("원본.docx");
+        let other = dir.path().join("다른 문서.docx");
+        crate::docx_validation::write_minimal_docx(&original);
+        crate::docx_validation::write_minimal_docx(&other);
+
+        let mut app = ToolBoxApp::new();
+        app.select(original.clone());
+        assert!(app.sessions.active_docx_mut().is_some());
+        app.sessions
+            .active_docx_mut()
+            .unwrap()
+            .save_working_copy()
+            .unwrap();
+        assert!(!app.sessions.active_docx_mut().unwrap().dirty());
+        app.select(other.clone());
+        assert_eq!(app.sessions.sessions().len(), 2);
+        app.select(original.clone());
+        assert_eq!(app.sessions.sessions().len(), 2);
+        assert!(app.sessions.active_docx_mut().is_some());
     }
 }

@@ -1,0 +1,31 @@
+name: WordCraft embedded experiment
+
+on:
+  push:
+    branches: ['feat/wordcraft-*', 'fix/wordcraft-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wordcraft:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --features embedded-wordcraft --all-targets -- -D warnings
+      - run: cargo test --features embedded-wordcraft --all-targets
+      - run: cargo build --release --features embedded-wordcraft
+      - uses: actions/upload-artifact@v4
+        with:
+          name: toolbox-wordcraft-preview
+          path: |
+            target/release/toolbox.exe
+            Cargo.lock
+          if-no-files-found: error
