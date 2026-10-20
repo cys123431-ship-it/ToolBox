@@ -159,7 +159,10 @@ mod tests {
             assert_eq!(FormatKind::from_path(Path::new(name)), Some(kind));
             assert_eq!(Engine::from_path(Path::new(name)), Some(kind.engine()));
         }
-        assert_eq!(FormatKind::from_path(Path::new("x.TSV")), Some(FormatKind::Csv));
+        assert_eq!(
+            FormatKind::from_path(Path::new("x.TSV")),
+            Some(FormatKind::Csv)
+        );
         assert_eq!(FormatKind::from_path(Path::new("x.exe")), None);
     }
 

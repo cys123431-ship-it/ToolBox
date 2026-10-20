@@ -1,9 +1,9 @@
 use crate::csv_ui::CsvEditorUi;
 use crate::engines::{self, Engine};
 use crate::preferences::Preferences;
-use crate::workspace::{FormatKind, WorkspaceTabs};
 #[cfg(feature = "embedded-wordcraft")]
 use crate::wordcraft_embed::WordCraftEmbed;
+use crate::workspace::{FormatKind, WorkspaceTabs};
 use eframe::egui;
 use std::path::PathBuf;
 
