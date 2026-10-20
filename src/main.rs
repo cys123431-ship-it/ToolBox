@@ -6,6 +6,7 @@ mod csv_ui;
 mod csv_workspace;
 #[cfg(test)]
 mod csv_workspace_tests;
+mod document_session;
 #[cfg(feature = "embedded-wordcraft")]
 mod docx_validation;
 mod engines;
@@ -14,7 +15,6 @@ mod ui;
 #[cfg(feature = "embedded-wordcraft")]
 mod wordcraft_embed;
 mod workspace;
-mod document_session;
 
 use eframe::egui;
 

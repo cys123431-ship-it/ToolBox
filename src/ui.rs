@@ -1,7 +1,7 @@
+use crate::document_session::DocumentSessions;
 use crate::engines::{self, Engine};
 use crate::preferences::Preferences;
 use crate::workspace::FormatKind;
-use crate::document_session::DocumentSessions;
 use eframe::egui;
 use std::path::PathBuf;
 
@@ -32,7 +32,9 @@ impl ToolBoxApp {
         match self.sessions.open(&path) {
             Ok(()) => {
                 #[cfg(feature = "embedded-wordcraft")]
-                { self.confirm_discard_wordcraft = false; }
+                {
+                    self.confirm_discard_wordcraft = false;
+                }
                 if let Some(session) = self.sessions.active() {
                     self.active = session.format.engine();
                     let path = session.path.clone();
@@ -159,7 +161,10 @@ impl ToolBoxApp {
             }
         }
         if self.active == Engine::Spreadsheet && self.sessions.active_csv_mut().is_some() {
-            let saved_as = self.sessions.active_csv_mut().and_then(|editor| editor.show(ui));
+            let saved_as = self
+                .sessions
+                .active_csv_mut()
+                .and_then(|editor| editor.show(ui));
             if let Some(path) = saved_as {
                 if let Err(e) = self.sessions.rename_active_csv(&path) {
                     self.notice = format!("CSV 세션 경로 갱신 실패: {e}");
@@ -169,8 +174,14 @@ impl ToolBoxApp {
                     self.notice = format!("최근 파일 목록 저장 실패: {error}");
                 }
             }
-            let dirty = self.sessions.active_csv_mut().is_some_and(|editor| editor.is_dirty());
-            let pending = self.sessions.active_csv_mut().is_some_and(|editor| editor.has_pending_recovery());
+            let dirty = self
+                .sessions
+                .active_csv_mut()
+                .is_some_and(|editor| editor.is_dirty());
+            let pending = self
+                .sessions
+                .active_csv_mut()
+                .is_some_and(|editor| editor.has_pending_recovery());
             ui.add_space(10.0);
             if ui
                 .button(if dirty {
@@ -184,7 +195,10 @@ impl ToolBoxApp {
                 })
                 .clicked()
             {
-                let result = self.sessions.active_csv_mut().map(|editor| editor.discard_changes());
+                let result = self
+                    .sessions
+                    .active_csv_mut()
+                    .map(|editor| editor.discard_changes());
                 if let Some(Err(e)) = result {
                     self.notice = format!("복구 데이터 삭제 실패: {e}");
                 } else {
@@ -340,10 +354,7 @@ impl eframe::App for ToolBoxApp {
                     ui.horizontal(|ui| {
                         for (index, path, name) in tabs {
                             if ui
-                                .selectable_label(
-                                    self.sessions.active_index() == Some(index),
-                                    name,
-                                )
+                                .selectable_label(self.sessions.active_index() == Some(index), name)
                                 .on_hover_text(path.display().to_string())
                                 .clicked()
                             {
@@ -411,7 +422,11 @@ mod wordcraft_switch_tests {
         let mut app = ToolBoxApp::new();
         app.select(original.clone());
         assert!(app.sessions.active_docx_mut().is_some());
-        app.sessions.active_docx_mut().unwrap().save_working_copy().unwrap();
+        app.sessions
+            .active_docx_mut()
+            .unwrap()
+            .save_working_copy()
+            .unwrap();
         assert!(!app.sessions.active_docx_mut().unwrap().dirty());
         app.select(other.clone());
         assert_eq!(app.sessions.sessions().len(), 2);

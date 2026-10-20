@@ -1,9 +1,9 @@
 //! Owns one live editor instance per open document. Switching tabs never drops edits.
 //! External-only tabs are file references, not in-process editors.
 use crate::csv_ui::CsvEditorUi;
-use crate::workspace::{FormatKind, AdapterKind};
 #[cfg(feature = "embedded-wordcraft")]
 use crate::wordcraft_embed::WordCraftEmbed;
+use crate::workspace::{AdapterKind, FormatKind};
 use std::path::{Path, PathBuf};
 
 enum EditorSession {
@@ -37,8 +37,12 @@ pub struct DocumentSessions {
 }
 
 impl DocumentSessions {
-    pub fn sessions(&self) -> &[DocumentSession] { &self.sessions }
-    pub fn active_index(&self) -> Option<usize> { self.active }
+    pub fn sessions(&self) -> &[DocumentSession] {
+        &self.sessions
+    }
+    pub fn active_index(&self) -> Option<usize> {
+        self.active
+    }
     pub fn active(&self) -> Option<&DocumentSession> {
         self.active.and_then(|index| self.sessions.get(index))
     }
@@ -66,11 +70,19 @@ impl DocumentSessions {
 
     /// A failed load leaves the previously active session and every editor intact.
     pub fn open(&mut self, path: &Path) -> Result<(), String> {
-        let path = path.canonicalize().map_err(|e| format!("파일 경로 확인 실패: {e}"))?;
-        if !path.is_file() { return Err("일반 파일만 열 수 있습니다.".into()); }
+        let path = path
+            .canonicalize()
+            .map_err(|e| format!("파일 경로 확인 실패: {e}"))?;
+        if !path.is_file() {
+            return Err("일반 파일만 열 수 있습니다.".into());
+        }
         let format = FormatKind::from_path(&path)
             .ok_or_else(|| "아직 지원하지 않는 파일 확장자입니다.".to_string())?;
-        if let Some(index) = self.sessions.iter().position(|session| session.path == path) {
+        if let Some(index) = self
+            .sessions
+            .iter()
+            .position(|session| session.path == path)
+        {
             self.active = Some(index);
             return Ok(());
         }
@@ -80,7 +92,11 @@ impl DocumentSessions {
             FormatKind::Docx => EditorSession::WordCraft(WordCraftEmbed::open(&path)?),
             _ => EditorSession::ExternalOnly,
         };
-        self.sessions.push(DocumentSession { path, format, editor });
+        self.sessions.push(DocumentSession {
+            path,
+            format,
+            editor,
+        });
         self.active = Some(self.sessions.len() - 1);
         Ok(())
     }
@@ -92,7 +108,12 @@ impl DocumentSessions {
         if !matches!(self.sessions[index].editor, EditorSession::Csv(_)) {
             return Err("CSV 세션이 아닙니다.".into());
         }
-        if self.sessions.iter().enumerate().any(|(i, s)| i != index && s.path == path) {
+        if self
+            .sessions
+            .iter()
+            .enumerate()
+            .any(|(i, s)| i != index && s.path == path)
+        {
             return Err("다른 탭에서 이미 열린 파일입니다.".into());
         }
         self.sessions[index].path = path;
@@ -153,7 +174,10 @@ mod tests {
         fs::write(&file, "placeholder").unwrap();
         let mut sessions = DocumentSessions::default();
         sessions.open(&file).unwrap();
-        assert_eq!(sessions.active().unwrap().adapter(), AdapterKind::ExternalOnly);
+        assert_eq!(
+            sessions.active().unwrap().adapter(),
+            AdapterKind::ExternalOnly
+        );
         sessions.close_active();
         assert!(sessions.active().is_none());
     }

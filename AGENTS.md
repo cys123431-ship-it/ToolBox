@@ -19,7 +19,11 @@ Windows 11 우선. 사용자가 로컬에서 DOCX/HWPX/XLSX/PPTX/PDF 문서를 �
 
 ## 현재 구현 범위
 
-eframe 쉘, 독립 실행 앱 탐색/호출, 최근 파일, 경로 설정, 파일 확장자 라우팅. CSV/TSV만 ToolBox 내부에서 기본 셀 편집·저장 가능. XLSX/DOCX/PPTX/HWPX 편집·ChatGPT 로그인은 미구현.
+eframe 쉘, 독립 실행 앱 탐색/호출, 최근 파일, 경로 설정, 파일 확장자 라우팅. CSV/TSV 내부 편집과 독립 세션 코드, `embedded-wordcraft` 선택 빌드의 DOCX 임시 사본 편집 실험 코드가 있다. XLSX/PPTX/PDF/HWP/HWPX 내부 편집과 ChatGPT 로그인은 미구현. 실제 Windows GUI 검증은 별도로 필요.
+
+## 브랜치·통합 규칙
+
+모든 작업은 main에서 파생한 단일 작업 브랜치에서 진행한다. 회차가 끝나면 CI 통과를 확인한 뒤 main에 병합한다. 같은 작업을 새 브랜치 이름으로 다시 푸시하지 않는다. 회차 목표와 무관한 브랜치를 만들지 않는다.
 
 ## 작업 선행 조건
 
