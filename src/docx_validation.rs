@@ -96,7 +96,10 @@ pub(crate) fn write_minimal_docx(path: &Path) {
     ];
     for (name, xml) in parts {
         writer
-            .start_file(name, SimpleFileOptions::default())
+            .start_file(
+                name,
+                SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored),
+            )
             .unwrap();
         writer.write_all(xml.as_bytes()).unwrap();
     }
@@ -177,14 +180,23 @@ mod tests {
         write_minimal_docx(&path);
         validate_docx_package(&path).unwrap();
 
+        // Change a byte inside the stored XML member without updating its CRC.
+        let payload_start = {
+            let file = File::open(&path).unwrap();
+            let mut archive = ZipArchive::new(file).unwrap();
+            let entry = archive.by_name("word/document.xml").unwrap();
+            assert_eq!(entry.compression(), zip::CompressionMethod::Stored);
+            usize::try_from(entry.data_start()).unwrap()
+        };
         let mut bytes = std::fs::read(&path).unwrap();
         let marker = "한글 테스트".as_bytes();
-        let offset = bytes
+        let relative_offset = bytes[payload_start..]
             .windows(marker.len())
             .position(|slice| slice == marker)
             .expect("expected test text in stored XML");
-        bytes[offset] ^= 1;
+        bytes[payload_start + relative_offset] ^= 1;
         std::fs::write(&path, bytes).unwrap();
-        assert!(validate_docx_package(&path).is_err());
+        let error = validate_docx_package(&path).unwrap_err();
+        assert!(error.contains("CRC") || error.contains("손상"), "{error}");
     }
 }
