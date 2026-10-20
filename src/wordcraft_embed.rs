@@ -120,6 +120,21 @@ mod tests {
     use super::*;
 
     #[test]
+    fn wordcraft_open_save_reopen_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("korean.docx");
+        crate::docx_validation::write_minimal_docx(&source);
+        let mut first = WordCraftEmbed::open(&source).unwrap();
+        first.save_working_copy().unwrap();
+        let exported = dir.path().join("saved.docx");
+        export_new_file(&first.working, &exported).unwrap();
+        crate::docx_validation::validate_docx_package(&exported).unwrap();
+        let mut reopened = WordCraftEmbed::open(&exported).unwrap();
+        reopened.save_working_copy().unwrap();
+        assert!(source.exists());
+    }
+
+    #[test]
     fn export_is_non_destructive() {
         let d = tempfile::tempdir().unwrap();
         let source = d.path().join("working.docx");
