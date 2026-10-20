@@ -1,8 +1,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod csv_plan;
+mod csv_recovery;
+mod csv_ui;
+mod csv_workspace;
+#[cfg(test)]
+mod csv_workspace_tests;
+#[cfg(feature = "embedded-wordcraft")]
+mod docx_validation;
 mod engines;
 mod preferences;
 mod ui;
+#[cfg(feature = "embedded-wordcraft")]
+mod wordcraft_embed;
 
 use eframe::egui;
 

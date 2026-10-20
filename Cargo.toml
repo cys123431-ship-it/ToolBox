@@ -10,7 +10,34 @@ name = "toolbox"
 path = "src/main.rs"
 
 [dependencies]
-eframe = "0.32"
+csv = "1.3"
+eframe = "0.36"
 rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
+
+[features]
+default = []
+embedded-wordcraft = ["dep:wordcraft-doc", "dep:wordcraft-engine", "dep:wordcraft-ui-egui", "dep:zip"]
+
+[dependencies.wordcraft-doc]
+git = "https://github.com/storytold/wordcraft"
+rev = "e6c5a701ddff5be16e266028168c70658aae39d9"
+optional = true
+
+[dependencies.wordcraft-engine]
+git = "https://github.com/storytold/wordcraft"
+rev = "e6c5a701ddff5be16e266028168c70658aae39d9"
+optional = true
+
+[dependencies.wordcraft-ui-egui]
+git = "https://github.com/storytold/wordcraft"
+rev = "e6c5a701ddff5be16e266028168c70658aae39d9"
+optional = true
+
+# WordCraft's craft-pdf backend requires the matching patched krilla build.
+[patch.crates-io]
+krilla = { git = "https://github.com/storytold/craft-libs", rev = "c3487320b2d1de657b860b3c8abb44e1f2b32bd8" }
