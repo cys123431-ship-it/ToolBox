@@ -11,6 +11,7 @@ mod docx_validation;
 mod engines;
 mod preferences;
 mod ui;
+mod workspace;
 #[cfg(feature = "embedded-wordcraft")]
 mod wordcraft_embed;
 

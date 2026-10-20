@@ -1,6 +1,7 @@
 use crate::csv_ui::CsvEditorUi;
 use crate::engines::{self, Engine};
 use crate::preferences::Preferences;
+use crate::workspace::{FormatKind, WorkspaceTabs};
 #[cfg(feature = "embedded-wordcraft")]
 use crate::wordcraft_embed::WordCraftEmbed;
 use eframe::egui;
@@ -8,6 +9,7 @@ use std::path::PathBuf;
 
 pub struct ToolBoxApp {
     preferences: Preferences,
+    workspace: WorkspaceTabs,
     csv_editor: Option<CsvEditorUi>,
     #[cfg(feature = "embedded-wordcraft")]
     wordcraft: Option<WordCraftEmbed>,
@@ -23,6 +25,7 @@ impl ToolBoxApp {
     pub fn new() -> Self {
         Self {
             preferences: Preferences::load(),
+            workspace: WorkspaceTabs::default(),
             csv_editor: None,
             #[cfg(feature = "embedded-wordcraft")]
             wordcraft: None,
@@ -41,6 +44,7 @@ impl ToolBoxApp {
             let normalized = path.canonicalize().unwrap_or_else(|_| path.clone());
             if editor.original() == normalized.as_path() {
                 self.active = Engine::Document;
+                self.workspace.activate_or_insert(&path);
                 return;
             }
             // A saved temporary copy is NOT an exported document. Switching files
@@ -52,6 +56,7 @@ impl ToolBoxApp {
         if let Some(editor) = self.csv_editor.as_ref() {
             if editor.workspace.path == path {
                 self.active = Engine::Spreadsheet;
+                self.workspace.activate_or_insert(&path);
                 return;
             }
             if editor.is_dirty() {
@@ -97,6 +102,7 @@ impl ToolBoxApp {
                 }
                 self.active = engine;
                 self.selected = Some(path.clone());
+                self.workspace.activate_or_insert(&path);
                 self.preferences.record_recent(&path);
                 if let Err(error) = self.preferences.save() {
                     self.notice = format!("최근 파일 목록 저장 실패: {error}");
@@ -144,6 +150,11 @@ impl ToolBoxApp {
             if let Some(editor) = self.wordcraft.as_mut() {
                 ui.heading("DOCX · WordCraft 내장 편집 실험");
                 ui.label("원본을 임시 사본으로 복사해 편집합니다. 원본은 자동 변경되지 않습니다.");
+                ui.label(if editor.dirty() {
+                    "편집 상태: 임시 사본에 저장하지 않은 변경 사항이 있습니다."
+                } else {
+                    "편집 상태: WordCraft가 보고한 미저장 변경 사항 없음 (원본 저장과 별개)"
+                });
                 ui.horizontal(|ui| {
                     if ui.button("임시 사본 저장").clicked() {
                         self.notice = match editor.save_working_copy() {
@@ -219,6 +230,7 @@ impl ToolBoxApp {
             let saved_as = self.csv_editor.as_mut().and_then(|editor| editor.show(ui));
             if let Some(path) = saved_as {
                 self.selected = Some(path.clone());
+                self.workspace.activate_or_insert(&path);
                 self.preferences.record_recent(&path);
                 if let Err(error) = self.preferences.save() {
                     self.notice = format!("최근 파일 목록 저장 실패: {error}");
@@ -344,6 +356,74 @@ impl eframe::App for ToolBoxApp {
                     }
                 });
             });
+        });
+        egui::Panel::top("workspace_actions").show(root_ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                if ui.button("파일 열기…").clicked() {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .set_title("ToolBox - 파일 열기")
+                        .pick_file()
+                    {
+                        self.select(path);
+                    }
+                }
+                ui.separator();
+                if let Some(tab) = self.workspace.active() {
+                    let adapter = tab.format.adapter();
+                    ui.label(format!(
+                        "{} · {} · {}",
+                        tab.format.label(),
+                        tab.format.engine().key(),
+                        adapter.label()
+                    ));
+                    if !adapter.can_save_original_in_app() {
+                        ui.weak("이 형식의 ToolBox 원본 저장은 미지원");
+                    }
+                } else {
+                    ui.weak("파일을 선택하세요 · 저장은 각 편집기에서 제공");
+                }
+            });
+        });
+        egui::Panel::top("workspace_tabs").show(root_ui, |ui| {
+            let tabs: Vec<_> = self
+                .workspace
+                .tabs()
+                .iter()
+                .enumerate()
+                .map(|(index, tab)| {
+                    let name = tab
+                        .path
+                        .file_name()
+                        .map(|name| name.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| tab.path.display().to_string());
+                    (index, tab.path.clone(), name)
+                })
+                .collect();
+            if tabs.is_empty() {
+                ui.horizontal_wrapped(|ui| {
+                    ui.weak("형식별 작업공간:");
+                    for format in FormatKind::CORE {
+                        ui.label(format.label());
+                    }
+                });
+            } else {
+                egui::ScrollArea::horizontal().show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        for (index, path, name) in tabs {
+                            if ui
+                                .selectable_label(
+                                    self.workspace.active_index() == Some(index),
+                                    name,
+                                )
+                                .on_hover_text(path.display().to_string())
+                                .clicked()
+                            {
+                                self.select(path);
+                            }
+                        }
+                    });
+                });
+            }
         });
         egui::Panel::left("modules")
             .resizable(false)
