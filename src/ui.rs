@@ -11,6 +11,8 @@ pub struct ToolBoxApp {
     csv_editor: Option<CsvEditorUi>,
     #[cfg(feature = "embedded-wordcraft")]
     wordcraft: Option<WordCraftEmbed>,
+    #[cfg(feature = "embedded-wordcraft")]
+    confirm_discard_wordcraft: bool,
     active: Engine,
     selected: Option<PathBuf>,
     notice: String,
@@ -24,6 +26,8 @@ impl ToolBoxApp {
             csv_editor: None,
             #[cfg(feature = "embedded-wordcraft")]
             wordcraft: None,
+            #[cfg(feature = "embedded-wordcraft")]
+            confirm_discard_wordcraft: false,
             active: Engine::Document,
             selected: None,
             notice: "현재 버전은 편집기 연결 실험용입니다. 통합 편집기는 개발 중입니다.".into(),
@@ -34,14 +38,16 @@ impl ToolBoxApp {
     fn select(&mut self, path: PathBuf) {
         #[cfg(feature = "embedded-wordcraft")]
         if let Some(editor) = self.wordcraft.as_ref() {
-            if editor.original() == path {
+            let normalized = path.canonicalize().unwrap_or_else(|_| path.clone());
+            if editor.original() == normalized.as_path() {
                 self.active = Engine::Document;
                 return;
             }
-            if editor.dirty() {
-                self.notice = "DOCX 임시 사본에 저장하지 않은 변경이 있습니다.".into();
-                return;
-            }
+            // A saved temporary copy is NOT an exported document. Switching files
+            // would drop TempDir and silently delete the user's saved edits.
+            self.active = Engine::Document;
+            self.notice = "DOCX 임시 사본을 먼저 새 파일로 내보내거나, 편집 종료에서 폐기를 명시적으로 승인하세요.".into();
+            return;
         }
         if let Some(editor) = self.csv_editor.as_ref() {
             if editor.workspace.path == path {
@@ -154,15 +160,30 @@ impl ToolBoxApp {
                             Err(e) => format!("내보내기 실패: {e}"),
                         };
                     }
-                    if ui.button("임시 편집 종료 (사본 폐기)").clicked() {
-                        close = true;
+                    if ui.button("임시 편집 종료…").clicked() {
+                        self.confirm_discard_wordcraft = true;
                     }
                 });
+                if self.confirm_discard_wordcraft {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(195, 120, 35),
+                        "임시 사본은 저장했더라도 종료 시 삭제됩니다. 필요한 내용은 먼저 새 DOCX로 내보내세요. 폐기하시겠습니까?",
+                    );
+                    ui.horizontal(|ui| {
+                        if ui.button("예, 임시 사본 폐기").clicked() {
+                            close = true;
+                        }
+                        if ui.button("취소하고 계속 편집").clicked() {
+                            self.confirm_discard_wordcraft = false;
+                        }
+                    });
+                }
                 ui.separator();
                 editor.show(ui);
             }
             if close {
                 self.wordcraft = None;
+                self.confirm_discard_wordcraft = false;
                 self.selected = None;
                 self.notice = "DOCX 임시 사본을 폐기하고 편집기를 닫았습니다.".into();
             }
@@ -363,5 +384,37 @@ impl eframe::App for ToolBoxApp {
             ui.label(&self.notice);
         });
         egui::CentralPanel::default().show(root_ui, |ui| self.module_panel(ui));
+    }
+}
+
+#[cfg(all(test, feature = "embedded-wordcraft"))]
+mod wordcraft_switch_tests {
+    use super::*;
+
+    #[test]
+    fn saved_temporary_docx_cannot_be_silently_discarded_by_file_switch() {
+        let dir = tempfile::tempdir().unwrap();
+        let original = dir.path().join("원본.docx");
+        let other = dir.path().join("다른 문서.docx");
+        crate::docx_validation::write_minimal_docx(&original);
+        crate::docx_validation::write_minimal_docx(&other);
+
+        let mut app = ToolBoxApp::new();
+        app.wordcraft = Some(WordCraftEmbed::open(&original).unwrap());
+        app.selected = Some(original.clone());
+        app.wordcraft.as_mut().unwrap().save_working_copy().unwrap();
+        assert!(!app.wordcraft.as_ref().unwrap().dirty());
+
+        // Even when WordCraft reports dirty=false, TempDir must not be dropped.
+        app.select(other);
+        assert!(app.wordcraft.is_some());
+        assert_eq!(app.selected.as_deref(), Some(original.as_path()));
+        assert_eq!(app.active, Engine::Document);
+        assert!(app.notice.contains("명시적으로 승인"));
+
+        // Re-selecting the same document keeps the current editing session.
+        app.select(original.clone());
+        assert!(app.wordcraft.is_some());
+        assert_eq!(app.selected.as_deref(), Some(original.as_path()));
     }
 }
