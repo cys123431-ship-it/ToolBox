@@ -120,18 +120,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn wordcraft_open_save_reopen_roundtrip() {
+    fn wordcraft_edits_korean_text_and_preserves_it_after_reopen() {
         let dir = tempfile::tempdir().unwrap();
-        let source = dir.path().join("korean.docx");
+        let source = dir.path().join("한글 원본.docx");
         crate::docx_validation::write_minimal_docx(&source);
+        let original_bytes = fs::read(&source).unwrap();
+
+        // This is a real WordCraft editing command, not merely a file copy.
         let mut first = WordCraftEmbed::open(&source).unwrap();
+        let replaced = first
+            .app
+            .run(
+                "edit.replaceAll",
+                serde_json::json!({
+                    "text": "한글 테스트",
+                    "with": "수정한 한글 문장",
+                    "matchCase": true
+                }),
+            )
+            .unwrap();
+        assert_eq!(replaced["replaced"].as_u64(), Some(1));
         first.save_working_copy().unwrap();
-        let exported = dir.path().join("saved.docx");
+
+        let exported = dir.path().join("수정본.docx");
         export_new_file(&first.working, &exported).unwrap();
         crate::docx_validation::validate_docx_package(&exported).unwrap();
+
         let mut reopened = WordCraftEmbed::open(&exported).unwrap();
-        reopened.save_working_copy().unwrap();
-        assert!(source.exists());
+        let found = reopened
+            .app
+            .run(
+                "edit.find",
+                serde_json::json!({"text": "수정한 한글 문장", "matchCase": true}),
+            )
+            .unwrap();
+        assert_eq!(found["count"].as_u64(), Some(1));
+        let old_text = reopened
+            .app
+            .run(
+                "edit.find",
+                serde_json::json!({"text": "한글 테스트", "matchCase": true}),
+            )
+            .unwrap();
+        assert_eq!(old_text["count"].as_u64(), Some(0));
+        assert_eq!(fs::read(&source).unwrap(), original_bytes);
     }
 
     #[test]

@@ -70,3 +70,13 @@ Windows에서 다음을 직접 확인해야 합니다.
 ## WordCraft DOCX ZIP 패키지 검사 (선택 기능)
 
 `cargo test --features embedded-wordcraft --all-targets`에서 정상 최소 DOCX ZIP, 손상된 ZIP, 필수 항목 누락, ZIP 경로 탐색, 중복 항목, 새 파일 내보내기 덮어쓰기 방지 테스트를 실행한다. ZIP CRC/구조 검사는 Word 호환성이나 XML 관계·레이아웃 검증을 대체하지 않는다. 실제 DOCX(표, 이미지, 각주, 수식, 한글 글꼴)를 WordCraft에서 열고 수정·내보낸 뒤 Word 및 독립 뷰어에서 확인하는 실파일 시험은 미완료다.
+
+## WordCraft 한글 본문 수정 왕복 회귀 테스트 (2026-10-20)
+
+`wordcraft_edits_korean_text_and_preserves_it_after_reopen`는 최소 한글 DOCX에
+WordCraft의 실제 `edit.replaceAll` 명령을 적용하고 교체 건수가 1인지 확인합니다.
+임시 사본 저장 → 새 DOCX 내보내기 → 재열기 후 `edit.find`로 수정한 문장이
+1회 검색되고 기존 문장은 0회 검색되는지 확인합니다. 원본 바이트도 그대로인지
+검증합니다. 이전 `wordcraft_open_save_reopen_roundtrip`의 단순 열기·저장보다
+강화된 테스트지만, 실제 Windows GUI 입력/IME 및 복잡한 Word 서식 보존
+호환성 검증은 아닙니다.
